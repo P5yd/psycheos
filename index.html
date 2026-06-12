@@ -1271,6 +1271,18 @@ body {
 .task-priority-low { border-left: 2px solid var(--text-dim); }
 
 
+
+/* ─── THEME SWITCHER ─── */
+.theme-card:hover {
+  border-color: var(--primary) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.theme-active {
+  border-color: var(--primary) !important;
+  background: var(--primary-dark) !important;
+}
+
 /* ─── PHASE 4 STYLES ─── */
 /* Make analytics canvases blend with light panel background */
 canvas {
@@ -7814,10 +7826,11 @@ function renderSettingsView() {
   view.innerHTML = `
     <div class="dash-header">
       <div class="view-title">SETTINGS</div>
-      <div class="view-sub">CONFIGURATION & DATA STORAGE</div>
+      <div class="view-sub">CONFIGURATION, APPEARANCE & DATA STORAGE</div>
     </div>
     <div class="dash-body">
-      <div style="max-width:600px;">
+      <div style="max-width:640px;">
+        \${renderThemePanel()}
 
         <div class="dash-panel" style="margin-bottom:16px;border-left:3px solid var(--primary);">
           <div class="dash-panel-title">📁 DATA FILE — FILE SYSTEM STORAGE</div>
@@ -7994,6 +8007,7 @@ function startApp() {
   loadAudit();
   addAudit('LOGIN', 'Session started — ' + name);
   bootApp();
+  loadSavedTheme();
 }
 
 async function saveDB() {
@@ -8169,6 +8183,285 @@ function triggerRestore() {
   else showToast('Restore input not found', true);
 }
 
+// ══════════════════════════════════════════════════════
+// PSYCHE.OS THEME SYSTEM
+// 3 built-in themes + custom colour builder
+// Saved to localStorage — persists across sessions
+// ══════════════════════════════════════════════════════
+
+const THEME_KEY = 'psycheos_theme';
+
+const BUILT_IN_THEMES = {
+  'warm-rose': {
+    name: 'Warm Rose',
+    description: 'Soft cream & rose — easy on the eyes',
+    preview: ['#F5F0EB','#C4848A','#3D3535'],
+    vars: {
+      '--bg':           '#F5F0EB',
+      '--panel':        'rgba(255,255,255,0.96)',
+      '--panel2':       'rgba(248,244,240,0.95)',
+      '--border':       '#E2D9D0',
+      '--primary':      '#C4848A',
+      '--primary-dim':  '#A86970',
+      '--primary-dark': '#F5E8E9',
+      '--text':         '#3D3535',
+      '--text-dim':     '#9B8E8E',
+      '--text-bright':  '#1A1010',
+      '--warn':         '#C4924A',
+      '--danger':       '#B85050',
+      '--danger-dark':  '#FAE8E8',
+      '--info':         '#6A90B8',
+    }
+  },
+  'matrix': {
+    name: 'Matrix',
+    description: 'Black & neon green — terminal mode',
+    preview: ['#000000','#00FF9D','#D0D0D0'],
+    vars: {
+      '--bg':           '#000000',
+      '--panel':        '#0d0d0d',
+      '--panel2':       '#111111',
+      '--border':       '#1a2a1a',
+      '--primary':      '#00FF9D',
+      '--primary-dim':  '#00CC77',
+      '--primary-dark': '#004d2e',
+      '--text':         '#D0D0D0',
+      '--text-dim':     '#606060',
+      '--text-bright':  '#F0F0F0',
+      '--warn':         '#FFAA33',
+      '--danger':       '#FF5555',
+      '--danger-dark':  '#4d0000',
+      '--info':         '#3399FF',
+    }
+  },
+  'midnight': {
+    name: 'Midnight',
+    description: 'Deep navy & soft blue — calm focus',
+    preview: ['#0a0e1a','#4e7fff','#c9c9d9'],
+    vars: {
+      '--bg':           '#0a0e1a',
+      '--panel':        '#111827',
+      '--panel2':       '#1a2234',
+      '--border':       '#1e2d4a',
+      '--primary':      '#4e7fff',
+      '--primary-dim':  '#3a6be8',
+      '--primary-dark': '#0d1f4a',
+      '--text':         '#c9c9d9',
+      '--text-dim':     '#5a6480',
+      '--text-bright':  '#ffffff',
+      '--warn':         '#f0a500',
+      '--danger':       '#ff5f6d',
+      '--danger-dark':  '#3d0010',
+      '--info':         '#38bdf8',
+    }
+  }
+};
+
+// ── APPLY THEME ───────────────────────────────────────
+function applyTheme(themeId, customVars) {
+  const root   = document.documentElement;
+  const theme  = BUILT_IN_THEMES[themeId];
+  const vars   = theme ? { ...theme.vars } : {};
+
+  // Merge custom overrides
+  if (customVars) Object.assign(vars, customVars);
+
+  // Apply all CSS variables to :root
+  Object.entries(vars).forEach(([k, v]) => root.style.setProperty(k, v));
+
+  // Special: Matrix gets the rain canvas, others don't
+  const existingCanvas = document.getElementById('matrixCanvas');
+  if (themeId === 'matrix') {
+    if (!existingCanvas) startMatrixRain();
+  } else {
+    if (existingCanvas) {
+      existingCanvas.remove();
+      if (window._matrixInterval) {
+        clearInterval(window._matrixInterval);
+        window._matrixInterval = null;
+      }
+    }
+  }
+
+  // Save to localStorage
+  localStorage.setItem(THEME_KEY, JSON.stringify({ id: themeId, custom: customVars || null }));
+
+  // Update active state in settings if open
+  document.querySelectorAll('.theme-card').forEach(el => {
+    el.classList.toggle('theme-active', el.dataset.themeId === themeId);
+  });
+}
+
+// ── LOAD SAVED THEME ON BOOT ──────────────────────────
+function loadSavedTheme() {
+  try {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (!saved) return; // default (warm-rose) stays
+    const { id, custom } = JSON.parse(saved);
+    applyTheme(id, custom);
+  } catch(e) { console.warn('Theme load failed:', e); }
+}
+
+// ── MATRIX RAIN ───────────────────────────────────────
+function startMatrixRain() {
+  const canvas = document.createElement('canvas');
+  canvas.id = 'matrixCanvas';
+  canvas.style.cssText = `
+    position:fixed;top:0;left:0;width:100%;height:100%;
+    z-index:0;pointer-events:none;opacity:0.12;
+  `;
+  document.body.insertBefore(canvas, document.body.firstChild);
+
+  const ctx   = canvas.getContext('2d');
+  const CHARS = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const FS    = 14;
+  let cols, drops, glows;
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    cols  = Math.floor(canvas.width / FS);
+    drops = Array.from({length: cols}, () => Math.random() * -canvas.height / FS);
+    glows = Array.from({length: cols}, () => Math.random() > 0.7);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function draw() {
+    ctx.fillStyle = 'rgba(0,0,0,0.045)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    for (let i = 0; i < cols; i++) {
+      const y = Math.floor(drops[i]) * FS;
+      const x = i * FS;
+      if (y >= 0 && y < canvas.height) {
+        ctx.shadowBlur  = glows[i] ? 12 : 4;
+        ctx.shadowColor = '#00FF9D';
+        ctx.fillStyle   = glows[i] ? '#FFFFFF' : '#00FF9D';
+        ctx.font        = `bold ${FS}px monospace`;
+        ctx.fillText(CHARS[Math.floor(Math.random() * CHARS.length)], x, y);
+      }
+      drops[i] += 0.5 + Math.random() * 0.4;
+      if (drops[i] * FS > canvas.height + 40 && Math.random() > 0.96) {
+        drops[i] = Math.random() * -20;
+        glows[i] = Math.random() > 0.7;
+      }
+    }
+    ctx.shadowBlur = 0;
+  }
+  window._matrixInterval = setInterval(draw, 42);
+}
+
+// ── RENDER THEME PANEL IN SETTINGS ────────────────────
+function renderThemePanel() {
+  const saved   = (() => { try { return JSON.parse(localStorage.getItem(THEME_KEY)) || {}; } catch(e) { return {}; } })();
+  const current = saved.id || 'warm-rose';
+  const custom  = saved.custom || {};
+
+  return `
+    <div class="dash-panel" style="margin-bottom:16px;">
+      <div class="dash-panel-title">🎨 APPEARANCE — THEME</div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;">
+        ${Object.entries(BUILT_IN_THEMES).map(([id, t]) => `
+          <div class="theme-card ${current===id?'theme-active':''}"
+               data-theme-id="${id}"
+               onclick="applyTheme('${id}');renderSettingsView();"
+               style="
+                 cursor:pointer;border:2px solid ${current===id?'var(--primary)':'var(--border)'};
+                 border-radius:10px;padding:14px 12px;text-align:center;
+                 background:${current===id?'var(--primary-dark)':'var(--panel2)'};
+                 transition:all 0.15s;
+               ">
+            <div style="display:flex;justify-content:center;gap:5px;margin-bottom:8px;">
+              ${t.preview.map(c => `
+                <div style="width:18px;height:18px;border-radius:50%;
+                  background:${c};border:1px solid rgba(128,128,128,0.2);"></div>
+              `).join('')}
+            </div>
+            <div style="font-weight:700;font-size:12px;color:var(--text);margin-bottom:3px;">${t.name}</div>
+            <div style="font-size:10px;color:var(--text-dim);">${t.description}</div>
+            ${current===id ? '<div style="font-size:9px;color:var(--primary);margin-top:5px;letter-spacing:1px;">✓ ACTIVE</div>' : ''}
+          </div>
+        `).join('')}
+      </div>
+
+      <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px;">
+        <div class="dash-panel-title" style="margin-bottom:12px;">CUSTOM COLOURS</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-bottom:14px;line-height:1.6;">
+          Override individual colours on top of any theme. Changes apply instantly.
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+          ${[
+            ['--primary',     'Accent / Primary',   'Main buttons, active items'],
+            ['--bg',          'Background',          'Page background'],
+            ['--panel',       'Panel',               'Cards and sidebars'],
+            ['--text',        'Text',                'Body text colour'],
+            ['--text-dim',    'Dim Text',            'Labels and hints'],
+            ['--border',      'Borders',             'Lines and dividers'],
+            ['--warn',        'Warning',             'Amber alerts'],
+            ['--danger',      'Danger',              'Red / risk indicators'],
+          ].map(([varName, label, hint]) => {
+            const currentVal = custom[varName] ||
+              getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+            return `
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 0;
+                border-bottom:1px solid var(--border);">
+                <input type="color"
+                  id="cc${varName.replace(/--|-/g,'_')}"
+                  value="${currentVal.startsWith('#') ? currentVal : '#888888'}"
+                  onchange="applyCustomColour('${varName}', this.value)"
+                  style="width:32px;height:32px;border:none;border-radius:6px;
+                    cursor:pointer;padding:0;background:none;" />
+                <div>
+                  <div style="font-size:11px;font-weight:600;color:var(--text);">${label}</div>
+                  <div style="font-size:10px;color:var(--text-dim);">${hint}</div>
+                </div>
+              </div>`;
+          }).join('')}
+        </div>
+
+        <div style="display:flex;gap:8px;">
+          <button class="btn-secondary" onclick="resetCustomColours()"
+            style="font-size:11px;">Reset to Theme Defaults</button>
+          <button class="btn-primary" onclick="saveCustomColours()"
+            style="font-size:11px;">Save Custom Colours</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function applyCustomColour(varName, value) {
+  document.documentElement.style.setProperty(varName, value);
+}
+
+function saveCustomColours() {
+  // Read all current custom colour inputs and save
+  const varNames = ['--primary','--bg','--panel','--text','--text-dim',
+                    '--border','--warn','--danger'];
+  const saved = (() => { try { return JSON.parse(localStorage.getItem(THEME_KEY)) || {}; } catch(e) { return {}; } })();
+  const custom = saved.custom || {};
+
+  varNames.forEach(v => {
+    const id  = 'cc' + v.replace(/--|-/g,'_');
+    const el  = document.getElementById(id);
+    if (el) custom[v] = el.value;
+  });
+
+  localStorage.setItem(THEME_KEY, JSON.stringify({ id: saved.id || 'warm-rose', custom }));
+  showToast('CUSTOM COLOURS SAVED');
+}
+
+function resetCustomColours() {
+  const saved = (() => { try { return JSON.parse(localStorage.getItem(THEME_KEY)) || {}; } catch(e) { return {}; } })();
+  const id    = saved.id || 'warm-rose';
+  localStorage.setItem(THEME_KEY, JSON.stringify({ id, custom: null }));
+  applyTheme(id, null);
+  renderSettingsView();
+  showToast('COLOURS RESET TO THEME DEFAULTS');
+}
+
+
 // ─── INIT ───
 // Plain mode — load settings and pre-fill name
 loadSettings();
@@ -8178,7 +8471,7 @@ const _si = document.getElementById('schoolNameInput');
 if (_si && settings.schoolName) _si.value = settings.schoolName;
 // Auto-open if counsellor name already saved
 if (settings.counsellorName) {
-  setTimeout(function() { startApp(); }, 100);
+  setTimeout(function() { startApp(); loadSavedTheme(); }, 100);
 }
 </script>
 </body>
