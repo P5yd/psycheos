@@ -7,16 +7,28 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="PSYCHE.OS">
 <meta name="theme-color" content="#C4848A">
-<link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
 <script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/sw.js")
-        .then(r => console.log("SW registered:", r.scope))
-        .catch(e => console.log("SW failed:", e));
-    });
-  }
+  // Dynamically resolve paths based on actual page location
+  (function() {
+    var base = window.location.href.replace(/[^/]*$/, '');
+
+    // Inject manifest link with correct absolute URL
+    var ml = document.createElement('link');
+    ml.rel = 'manifest';
+    ml.href = base + 'manifest.json';
+    document.currentScript.parentNode.insertBefore(ml, document.currentScript);
+
+    // Register SW with correct absolute URL
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        var swURL = base + 'sw.js';
+        navigator.serviceWorker.register(swURL, { scope: base })
+          .then(function(r) { console.log('SW registered:', r.scope); })
+          .catch(function(e) { console.log('SW failed:', e); });
+      });
+    }
+  })();
 </script>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -2845,9 +2857,26 @@ async function attemptUnlock() {
   errEl.textContent = 'Verifying...';
 
   try {
-    const stored = localStorage.getItem(HASH_KEY);
+    // Try localStorage first, then try reading hash from .enc file
+    let stored = localStorage.getItem(HASH_KEY);
+
+    // If no hash in localStorage but we have a file, try to read hash from file
+    if (!stored && FSA_SUPPORTED && fileHandle) {
+      try {
+        const fileContent = await readFromFile();
+        if (fileContent) {
+          const fp = JSON.parse(fileContent);
+          if (fp && fp.hash) {
+            stored = fp.hash;
+            localStorage.setItem(HASH_KEY, fp.hash);
+            console.log('Hash recovered from .enc file');
+          }
+        }
+      } catch(e) { console.warn('Could not read hash from file:', e); }
+    }
+
     if (!stored) {
-      // First launch — set new password
+      // Genuine first launch — set new password
       const hashed = await hashPassword(pass);
       localStorage.setItem(HASH_KEY, JSON.stringify(hashed));
       sessionKey = await verifyPassword(pass, hashed);
@@ -6523,8 +6552,8 @@ function printReport() {
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="PSYCHE.OS">
 <meta name="theme-color" content="#C4848A">
-<link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-192.png">
 
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -6591,8 +6620,8 @@ function exportReportHTML() {
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="PSYCHE.OS">
 <meta name="theme-color" content="#C4848A">
-<link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-192.png">
 
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -7698,8 +7727,8 @@ function printParentMeetingReport(meetingId) {
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="PSYCHE.OS">
 <meta name="theme-color" content="#C4848A">
-<link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-192.png">
 
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -8045,11 +8074,14 @@ async function saveDB() {
 
   const enc = await encrypt(db, sessionKey);
 
+  // Embed the password hash INTO the file so it works across any domain/browser
+  const storedHash = localStorage.getItem(HASH_KEY);
+  const filePayload = JSON.stringify({ hash: storedHash, data: enc });
+
   // Try File System Access first
   if (FSA_SUPPORTED && fsaReady && fileHandle) {
-    const wrote = await writeToFile(enc);
+    const wrote = await writeToFile(filePayload);
     if (wrote) {
-      // Also keep a copy in localStorage as emergency fallback
       try { localStorage.setItem(STORAGE_KEY, enc); } catch(e) {}
       localStorage.setItem('psycheos_lastSaved', new Date().toISOString());
       updateSaveIndicator();
@@ -8058,7 +8090,7 @@ async function saveDB() {
     }
   }
 
-  // FSA not available or failed — use localStorage
+  // Fallback to localStorage
   localStorage.setItem(STORAGE_KEY, enc);
   localStorage.setItem('psycheos_lastSaved', new Date().toISOString());
   updateSaveIndicator();
@@ -8072,10 +8104,32 @@ async function loadDB() {
   if (!sessionKey) return;
 
   let raw = null;
+  let filePayloadStr = null;
 
   // Try reading from file first
   if (FSA_SUPPORTED && fsaReady && fileHandle) {
-    raw = await readFromFile();
+    filePayloadStr = await readFromFile();
+  }
+
+  // Parse file payload — may contain embedded hash + encrypted data
+  if (filePayloadStr) {
+    try {
+      const fp = JSON.parse(filePayloadStr);
+      if (fp && fp.hash && fp.data) {
+        // Restore hash to localStorage if missing (new browser/domain scenario)
+        if (!localStorage.getItem(HASH_KEY) && fp.hash) {
+          localStorage.setItem(HASH_KEY, fp.hash);
+          console.log('Hash restored from file');
+        }
+        raw = fp.data;
+      } else {
+        // Old format — raw encrypted string
+        raw = filePayloadStr;
+      }
+    } catch(e) {
+      // Not JSON — old raw encrypted format
+      raw = filePayloadStr;
+    }
   }
 
   // Fallback to localStorage

@@ -1,18 +1,22 @@
-// PSYCHE.OS Service Worker v1
+// PSYCHE.OS Service Worker
 const CACHE = "psycheos-v2";
-const ASSETS = ["/", "/index.html", "/manifest.json", "/icon-192.svg", "/icon-512.svg"];
 
 self.addEventListener("install", e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE)
+      .then(c => c.addAll(["./", "./index.html", "./manifest.json",
+                           "./icon-192.png", "./icon-512.png"]))
+      .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener("activate", e => {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    ).then(() => clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(
+        keys.filter(k => k !== CACHE).map(k => caches.delete(k))
+      ))
+      .then(() => clients.claim())
   );
 });
 
@@ -21,7 +25,7 @@ self.addEventListener("fetch", e => {
     caches.match(e.request).then(cached => {
       if (cached) return cached;
       return fetch(e.request).then(res => {
-        if (res.ok) {
+        if (res && res.ok) {
           const clone = res.clone();
           caches.open(CACHE).then(c => c.put(e.request, clone));
         }
