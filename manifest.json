@@ -1,44 +1,24 @@
 {
-  "name": "PSYCHE.OS \u2014 School Counsellor OS",
+  "name": "PSYCHE.OS",
   "short_name": "PSYCHE.OS",
-  "description": "Private encrypted clinical workspace for school counsellors. By The Human Systems Lab.",
+  "description": "Private encrypted clinical workspace for school counsellors",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#F5F0EB",
   "theme_color": "#C4848A",
-  "orientation": "any",
-  "lang": "en-IN",
-  "categories": [
-    "health",
-    "productivity",
-    "education"
-  ],
   "icons": [
     {
-      "src": "/icon-192.svg",
+      "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.svg",
+      "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "maskable"
-    }
-  ],
-  "screenshots": [],
-  "shortcuts": [
-    {
-      "name": "Students",
-      "url": "/?view=students",
-      "description": "Open student records"
-    },
-    {
-      "name": "Dashboard",
-      "url": "/",
-      "description": "Open command centre"
     }
   ]
 }
