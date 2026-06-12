@@ -63,8 +63,8 @@ body {
   min-height: 100vh;
   overflow: hidden;
   background-image:
-    radial-gradient(circle at 15% 20%, rgba(196,132,138,0.08) 0%, transparent 50%),
-    radial-gradient(circle at 85% 80%, rgba(196,146,138,0.06) 0%, transparent 50%);
+    radial-gradient(circle at 15% 20%, rgba(0,0,0,0) 0%, transparent 50%),
+    radial-gradient(circle at 85% 80%, rgba(0,0,0,038,0.06) 0%, transparent 50%);
 }
 
 /* Scanline removed for light theme */
@@ -114,7 +114,7 @@ body {
 }
 
 .lock-box {
-  background: #FFFFFF;
+  background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 32px 40px;
@@ -133,7 +133,7 @@ body {
 
 .lock-input {
   width: 100%;
-  background: #FFFFFF;
+  background: var(--panel);
   border: 1.5px solid var(--border);
   border-radius: 6px;
   color: var(--text);
@@ -194,7 +194,7 @@ body {
 
 /* Top bar */
 .topbar {
-  background: #FFFFFF;
+  background: var(--panel);
   border-bottom: 1px solid var(--border);
   box-shadow: 0 1px 8px rgba(60,40,40,0.07);
   display: flex;
@@ -262,7 +262,7 @@ body {
 /* Sidebar */
 .sidebar {
   width: 200px;
-  background: #FFFFFF;
+  background: var(--panel);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -372,7 +372,7 @@ body {
 }
 
 .stat-card {
-  background: #FFFFFF;
+  background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(60,40,40,0.06);
@@ -419,7 +419,7 @@ body {
 }
 
 .dash-panel {
-  background: #FFFFFF;
+  background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(60,40,40,0.05);
@@ -520,7 +520,7 @@ body {
 
 .search-input {
   width: 100%;
-  background: #FAFAF9;
+  background: var(--panel2);
   border: 1px solid var(--border);
   color: var(--text);
   font-family: var(--mono);
@@ -542,7 +542,7 @@ body {
 }
 
 .filter-select {
-  background: #FAFAF9;
+  background: var(--panel2);
   border: 1px solid var(--border);
   border-radius: 5px;
   color: var(--text);
@@ -610,7 +610,7 @@ body {
 }
 
 .students-table th {
-  background: #F8F3F0;
+  background: var(--panel2);
   border-bottom: 2px solid var(--border);
   font-family: var(--sans);
   font-weight: 700;
@@ -684,7 +684,7 @@ body {
 }
 
 .modal {
-  background: #FFFFFF;
+  background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: 0 20px 60px rgba(60,40,40,0.15);
@@ -764,7 +764,7 @@ body {
 }
 
 .form-input, .form-select, .form-textarea {
-  background: #FAFAF9;
+  background: var(--panel2);
   border: 1px solid var(--border);
   border-radius: 5px;
   color: var(--text);
@@ -784,7 +784,7 @@ body {
 
 .form-textarea { resize: vertical; min-height: 70px; }
 
-.form-select option { background: #FFFFFF; color: var(--text); }
+.form-select option { background: var(--panel); color: var(--text); }
 
 .section-divider {
   grid-column: 1 / -1;
@@ -990,7 +990,7 @@ body {
 /* ─── SCROLLBAR ─── */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: #D4C4BC; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
 
 /* ─── TOAST ─── */
@@ -1017,7 +1017,7 @@ body {
 
 /* Status bar */
 .statusbar {
-  background: #FFFFFF;
+  background: var(--panel);
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -1071,7 +1071,7 @@ body {
   letter-spacing: 1px;
 }
 .mse-select {
-  background: #FAFAF9;
+  background: var(--panel2);
   border: 1px solid var(--border);
   border-radius: 5px;
   color: var(--text);
@@ -1084,7 +1084,7 @@ body {
 }
 .mse-select:focus { border-color: var(--primary-dim); }
 .mse-narrative {
-  background: #FDFAF8;
+  background: var(--panel2);
   border: 1px solid var(--border);
   border-left: 3px solid var(--primary);
   border-radius: 0 5px 5px 0;
@@ -1097,7 +1097,7 @@ body {
   margin-top: 12px;
 }
 .p6-card {
-  background: #FFFFFF;
+  background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 8px;
   margin-bottom: 10px;
@@ -1168,7 +1168,7 @@ body {
 .risk-level-btn.sel-high { background: rgba(255,85,85,0.15); border-color: var(--danger); color: var(--danger); }
 .risk-level-btn.sel-critical { background: rgba(255,85,85,0.3); border-color: var(--danger); color: var(--danger); font-weight: bold; }
 .treatment-goal {
-  background: #FDFAF8;
+  background: var(--panel2);
   border: 1px solid var(--border);
   border-radius: 6px;
   margin-bottom: 8px;
@@ -1263,7 +1263,7 @@ body {
   overflow-y: auto;
   border: 1px solid var(--border);
   padding: 6px;
-  background: #FAFAF9;
+  background: var(--panel2);
   margin-top: 4px;
 }
 .task-priority-high { border-left: 2px solid var(--danger); }
@@ -1411,6 +1411,39 @@ canvas {
   text-transform: uppercase;
 }
 
+
+/* ─── RESPONSIVE LAYOUT ─── */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 160px;
+    min-width: 160px;
+  }
+  .nav-item {
+    font-size: 11px;
+    padding: 7px 10px;
+  }
+  .sidebar-section-label {
+    font-size: 8px;
+    padding: 8px 10px 3px;
+  }
+  .topbar-brand { font-size: 13px; }
+  .topbar-meta  { display: none; }
+}
+
+@media (max-width: 540px) {
+  .sidebar {
+    width: 130px;
+    min-width: 130px;
+  }
+  .nav-item {
+    font-size: 10px;
+    padding: 6px 8px;
+    gap: 5px;
+  }
+  .nav-badge { display: none; }
+  .topbar-time { display: none; }
+  .save-indicator { display: none; }
+}
 </style>
 </head>
 <body>
@@ -1499,7 +1532,7 @@ canvas {
   <!-- Top bar -->
   <div class="topbar">
     <div class="topbar-brand">PSYCHE<span>.OS v1.0</span></div>
-    <div class="topbar-meta" id="topbarMeta">ST. THOMAS SCHOOL — COUNSELLOR CONSOLE</div>
+    <div class="topbar-meta" id="topbarMeta">COUNSELLOR CONSOLE</div>
     <div class="topbar-time" id="topbarTime"></div>
     <div class="save-indicator" style="
       font-size:10px;color:var(--primary-dim);
@@ -1897,7 +1930,7 @@ canvas {
     <div class="sb-item"><div class="sb-dot"></div><span>PSYCHE.OS v2 — NO ENCRYPTION</span></div>
     <div class="sb-item"><span id="sb-records">0 RECORDS</span></div>
     <div class="sb-item"><span id="sb-status">SYSTEM NOMINAL</span></div>
-    <div class="sb-item" style="margin-left:auto;"><span>ST. THOMAS SCHOOL — DELHI NCR</span></div>
+    <div class="sb-item" style="margin-left:auto;"><span id="sbSchoolName">SCHOOL</span></div>
   </div>
 </div><!-- /app -->
 
@@ -2599,6 +2632,11 @@ function saveSettings() {
   settings.lockTimeout = parseInt(document.getElementById('settingLockTimeout').value) || 15;
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   showToast('SETTINGS SAVED');
+  // Refresh topbar and statusbar with new school name
+  const _tm = document.getElementById('topbarMeta');
+  if (_tm) _tm.textContent = (settings.schoolName || 'School').toUpperCase() + ' — COUNSELLOR CONSOLE';
+  const _sb = document.getElementById('sbSchoolName');
+  if (_sb) _sb.textContent = (settings.schoolName || 'School').toUpperCase();
   addAudit('SETTINGS_CHANGED', 'System settings updated');
 }
 
@@ -2663,6 +2701,11 @@ function bootApp() {
   startClock();
   startInactivityTimer();
   updateSaveIndicator();
+  // Update school name in topbar and statusbar from settings
+  const _tm = document.getElementById('topbarMeta');
+  if (_tm) _tm.textContent = (settings.schoolName || 'School').toUpperCase() + ' — COUNSELLOR CONSOLE';
+  const _sb = document.getElementById('sbSchoolName');
+  if (_sb) _sb.textContent = (settings.schoolName || 'School').toUpperCase();
   showView('dashboard');
 }
 
@@ -7830,8 +7873,6 @@ function renderSettingsView() {
     </div>
     <div class="dash-body">
       <div style="max-width:640px;">
-        \${renderThemePanel()}
-
         <div class="dash-panel" style="margin-bottom:16px;border-left:3px solid var(--primary);">
           <div class="dash-panel-title">📁 DATA FILE — FILE SYSTEM STORAGE</div>
           <p style="color:var(--text-dim);font-size:12px;margin-bottom:10px;line-height:1.6;">
@@ -7887,6 +7928,8 @@ function renderSettingsView() {
         </div>
 
 
+
+        ${renderThemePanel()}
 
         <div class="dash-panel" style="border-left:3px solid var(--danger);">
           <div class="dash-panel-title" style="color:var(--danger);">DANGER ZONE</div>
@@ -8290,6 +8333,11 @@ function applyTheme(themeId, customVars) {
   document.querySelectorAll('.theme-card').forEach(el => {
     el.classList.toggle('theme-active', el.dataset.themeId === themeId);
   });
+
+  // Force layout repaint — fixes sidebar clipping on some viewports
+  document.body.style.display = 'none';
+  document.body.offsetHeight; // trigger reflow
+  document.body.style.display = '';
 }
 
 // ── LOAD SAVED THEME ON BOOT ──────────────────────────
