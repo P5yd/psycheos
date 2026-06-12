@@ -2578,61 +2578,13 @@ const RISK_FLAGS = [
   'Family Issues', 'Grief/Loss', 'Academic Failure Risk'
 ];
 
-// ─── CRYPTO ───
-async function deriveKey(password, salt) {
-  const enc = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
-  return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
-    keyMaterial,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
-}
 
-async function encrypt(data, key) {
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const enc = new TextEncoder();
-  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(data)));
-  const buf = new Uint8Array(iv.byteLength + ct.byteLength);
-  buf.set(iv, 0); buf.set(new Uint8Array(ct), iv.byteLength);
-  // Use chunk-based conversion to avoid call stack overflow on large buffers
-  let binary = '';
-  const chunkSize = 8192;
-  for (let i = 0; i < buf.length; i += chunkSize) {
-    binary += String.fromCharCode(...buf.subarray(i, i + chunkSize));
-  }
-  return btoa(binary);
-}
 
-async function decrypt(b64, key) {
-  const buf = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-  const iv = buf.slice(0, 12);
-  const ct = buf.slice(12);
-  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
-  return JSON.parse(new TextDecoder().decode(pt));
-}
 
-async function hashPassword(password) {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const key = await deriveKey(password, salt);
-  let saltStr = '';
-  for (let i = 0; i < salt.length; i++) saltStr += String.fromCharCode(salt[i]);
-  const saltB64 = btoa(saltStr);
-  const check = await encrypt({ check: 'PSYCHEOS_OK' }, key);
-  return { salt: saltB64, check };
-}
 
-async function verifyPassword(password, stored) {
-  try {
-    const salt = Uint8Array.from(atob(stored.salt), c => c.charCodeAt(0));
-    const key = await deriveKey(password, salt);
-    const result = await decrypt(stored.check, key);
-    if (result.check === 'PSYCHEOS_OK') return key;
-    return null;
-  } catch { return null; }
-}
+
+// verifyPassword replaced by crypto v2
+
 
 // ─── PERSISTENCE ───
 // saveDB replaced by FSA layer above
@@ -2835,70 +2787,9 @@ function exportAuditLog() {
 }
 
 // ─── AUTH ───
-// Auth events handled inline on lock screen elements
 
-async function attemptUnlock() {
-  const errEl = document.getElementById('lockError');
-  const passEl = document.getElementById('masterPassInput');
-  errEl.textContent = '';
+// attemptUnlock replaced by crypto v2
 
-  const pass = passEl ? passEl.value : '';
-  if (!pass || pass.length < 4) {
-    errEl.textContent = 'Password must be at least 4 characters';
-    return;
-  }
-
-  // Check Web Crypto availability
-  if (!window.crypto || !window.crypto.subtle) {
-    errEl.textContent = 'Error: Web Crypto not available. Please open this file in Chrome or Edge.';
-    return;
-  }
-
-  errEl.textContent = 'Verifying...';
-
-  try {
-    // Try localStorage first, then try reading hash from .enc file
-    let stored = localStorage.getItem(HASH_KEY);
-
-    // If no hash in localStorage but we have a file, try to read hash from file
-    if (!stored && FSA_SUPPORTED && fileHandle) {
-      try {
-        const fileContent = await readFromFile();
-        if (fileContent) {
-          const fp = JSON.parse(fileContent);
-          if (fp && fp.hash) {
-            stored = fp.hash;
-            localStorage.setItem(HASH_KEY, fp.hash);
-            console.log('Hash recovered from .enc file');
-          }
-        }
-      } catch(e) { console.warn('Could not read hash from file:', e); }
-    }
-
-    if (!stored) {
-      // Genuine first launch — set new password
-      const hashed = await hashPassword(pass);
-      localStorage.setItem(HASH_KEY, JSON.stringify(hashed));
-      sessionKey = await verifyPassword(pass, hashed);
-      await loadDB(); loadSettings(); loadAudit();
-      addAudit('FIRST_LAUNCH', 'System initialized.');
-      bootApp();
-    } else {
-      const hd = JSON.parse(stored);
-      sessionKey = await verifyPassword(pass, hd);
-      if (!sessionKey) {
-        errEl.textContent = 'Incorrect password. Try again.';
-        return;
-      }
-      await loadDB(); loadSettings(); loadAudit();
-      addAudit('LOGIN', 'Session started');
-      bootApp();
-    }
-  } catch(e) {
-    errEl.textContent = 'Error: ' + (e.message || 'Unknown error. Try Chrome or Edge.');
-    console.error('Unlock error:', e);
-  }
-}
 
 function bootApp() {
   const g = id => document.getElementById(id);
@@ -2919,52 +2810,6 @@ function bootApp() {
   startInactivityTimer();
   updateSaveIndicator();
   showView('dashboard');
-  // Prompt to choose file if FSA available but not yet configured
-  setTimeout(() => { if (FSA_SUPPORTED && !fsaReady) showFileSetupPrompt(); }, 800);
-}
-
-function lockApp() {
-  addAudit('LOGOUT', 'Session locked');
-  sessionKey = null;
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('lockScreen').style.display = 'flex';
-  const mpi = document.getElementById('masterPassInput'); if(mpi) mpi.value = '';
-  const le = document.getElementById('lockError'); if(le) le.textContent = '';
-  const lh = document.getElementById('lockHint'); if(lh) lh.textContent = 'RE-ENTER MASTER PASSWORD';
-  clearInterval(window._clockInterval);
-  resetInactivityTimer();
-}
-
-async function changePassword() {
-  const cur = document.getElementById('currentPass').value;
-  const nw  = document.getElementById('newPass').value;
-  const cf  = document.getElementById('confirmPass').value;
-  if (nw !== cf) { showToast('PASSWORDS DO NOT MATCH', true); return; }
-  if (nw.length < 4) { showToast('NEW PASSWORD TOO SHORT', true); return; }
-
-  // Verify current password
-  const stored = localStorage.getItem(HASH_KEY);
-  if (!stored) { showToast('NO PASSWORD HASH FOUND', true); return; }
-  const verified = await verifyPassword(cur, JSON.parse(stored));
-  if (!verified) { showToast('CURRENT PASSWORD INCORRECT', true); return; }
-
-  // Generate new hash and derive new session key
-  const hashed = await hashPassword(nw);
-  const newHashStr = JSON.stringify(hashed);
-  sessionKey = await verifyPassword(nw, hashed);
-
-  // Store new hash in localStorage BEFORE saveDB so it gets embedded in file
-  localStorage.setItem(HASH_KEY, newHashStr);
-
-  // saveDB now re-encrypts with new sessionKey AND embeds new hash in file
-  await saveDB();
-
-  showToast('PASSWORD UPDATED — FILE RE-ENCRYPTED');
-  addAudit('PASSWORD_CHANGED', 'Master password updated and file re-encrypted');
-  ['currentPass','newPass','confirmPass'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
 }
 
 // ─── INACTIVITY LOCK ───
@@ -3444,46 +3289,10 @@ function refreshSidebarBadges() {
   document.getElementById('sb-records').textContent = db.students.length + ' RECORDS';
 }
 
-// ─── BACKUP / RESTORE ───
-async function manualBackup() {
-  if (!sessionKey) return;
-  const payload = { version: '1.0', created: new Date().toISOString(), data: db, settings };
-  const enc = await encrypt(payload, sessionKey);
-  downloadFile(enc, `psycheos_backup_${dateStamp()}.psycheos`, 'text/plain');
-  localStorage.setItem('psycheos_lastbackup', new Date().toISOString());
-  addAudit('BACKUP_CREATED', 'Manual backup exported');
-  showToast('BACKUP EXPORTED');
-  refreshDashboard();
-}
 
-function triggerRestore() { document.getElementById('restoreInput').click(); }
 
-async function restoreBackup(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const text = await file.text();
-  try {
-    const payload = await decrypt(text, sessionKey);
-    // Handle both backup formats
-    const backupData = payload.data || payload;
-    if (!backupData || !backupData.students) throw new Error('Invalid backup');
-    const createdStr = payload.created ? new Date(payload.created).toLocaleString('en-IN') : 'unknown date';
-    if (!confirm(`RESTORE BACKUP from ${createdStr}?\n\nThis will OVERWRITE current data.`)) return;
-    db = backupData;
-    db.sessions    = db.sessions    || [];
-    db.referrals   = db.referrals   || [];
-    db.assessments = db.assessments || [];
-    db.tasks            = db.tasks            || [];
-  db.parentMeetings   = db.parentMeetings   || [];
-    await saveDB();
-    addAudit('RESTORE', `Restored from backup: ${file.name}`);
-    showToast('BACKUP RESTORED');
-    refreshDashboard();
-    refreshSidebarBadges();
-    renderStudentsTable();
-  } catch { showToast('RESTORE FAILED — INVALID FILE OR WRONG PASSWORD', true); }
-  input.value = '';
-}
+// restoreBackup replaced by crypto v2
+
 
 async function clearAllData() {
   if (!confirm('WARNING: This will permanently delete ALL records.\n\nExport a backup first.\n\nType DELETE to confirm.')) return;
@@ -8082,97 +7891,15 @@ async function promptChooseFile() {
 
 // ══════════════════════════════════════════════════════
 // OVERRIDDEN saveDB — tries FSA first, falls back to localStorage
-// ══════════════════════════════════════════════════════
-async function saveDB() {
-  if (!sessionKey) return;
 
-  const enc = await encrypt(db, sessionKey);
+// saveDB replaced by crypto v2
 
-  // Embed the password hash INTO the file so it works across any domain/browser
-  const storedHash = localStorage.getItem(HASH_KEY);
-  const filePayload = JSON.stringify({ hash: storedHash, data: enc });
-
-  // Try File System Access first
-  if (FSA_SUPPORTED && fsaReady && fileHandle) {
-    const wrote = await writeToFile(filePayload);
-    if (wrote) {
-      try { localStorage.setItem(STORAGE_KEY, enc); } catch(e) {}
-      localStorage.setItem('psycheos_lastSaved', new Date().toISOString());
-      updateSaveIndicator();
-      updateStorageStatus('file');
-      return;
-    }
-  }
-
-  // Fallback to localStorage
-  localStorage.setItem(STORAGE_KEY, enc);
-  localStorage.setItem('psycheos_lastSaved', new Date().toISOString());
-  updateSaveIndicator();
-  updateStorageStatus(FSA_SUPPORTED ? 'none' : 'fallback');
-}
 
 // ══════════════════════════════════════════════════════
 // OVERRIDDEN loadDB — tries FSA first, falls back to localStorage
-// ══════════════════════════════════════════════════════
-async function loadDB() {
-  if (!sessionKey) return;
 
-  let raw = null;
-  let filePayloadStr = null;
+// loadDB replaced by crypto v2
 
-  // Try reading from file first
-  if (FSA_SUPPORTED && fsaReady && fileHandle) {
-    filePayloadStr = await readFromFile();
-  }
-
-  // Parse file payload — may contain embedded hash + encrypted data
-  if (filePayloadStr) {
-    try {
-      const fp = JSON.parse(filePayloadStr);
-      if (fp && fp.hash && fp.data) {
-        // Restore hash to localStorage if missing (new browser/domain scenario)
-        if (!localStorage.getItem(HASH_KEY) && fp.hash) {
-          localStorage.setItem(HASH_KEY, fp.hash);
-          console.log('Hash restored from file');
-        }
-        raw = fp.data;
-      } else {
-        // Old format — raw encrypted string
-        raw = filePayloadStr;
-      }
-    } catch(e) {
-      // Not JSON — old raw encrypted format
-      raw = filePayloadStr;
-    }
-  }
-
-  // Fallback to localStorage
-  if (!raw) {
-    raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) updateStorageStatus(FSA_SUPPORTED ? 'none' : 'fallback');
-  }
-
-  if (!raw) return;
-
-  let parsed = null;
-  try {
-    const result = await decrypt(raw, sessionKey);
-    if      (result && result.data && Array.isArray(result.data.students)) parsed = result.data;
-    else if (result && result.data && result.data.students !== undefined)  parsed = result.data;
-    else if (result && Array.isArray(result.students))                     parsed = result;
-    else if (result && typeof result === 'object')                         parsed = result;
-  } catch(e) {
-    console.warn('loadDB decrypt failed:', e.message);
-  }
-
-  db = parsed || {};
-  db.students       = db.students       || [];
-  db.sessions       = db.sessions       || [];
-  db.referrals      = db.referrals      || [];
-  db.assessments    = db.assessments    || [];
-  db.tasks          = db.tasks          || [];
-  db.parentMeetings = db.parentMeetings || [];
-}
 
 // ── FILE SELECTION SCREEN shown after first login ─────
 // If FSA is supported but no file is set yet, prompt once
@@ -8341,6 +8068,419 @@ function renderSettingsView() {
   if(slt) slt.value = settings.lockTimeout || 15;
   // Update storage status
   updateStorageStatus(FSA_SUPPORTED && fsaReady ? 'file' : FSA_SUPPORTED ? 'none' : 'fallback');
+}
+
+
+// ══════════════════════════════════════════════════════
+// PSYCHE.OS CRYPTO v2 — KEY WRAPPING ARCHITECTURE
+//
+// Data Encryption Key (DEK) — generated ONCE, never changes
+// Password Key (KEK)        — derived from password, wraps the DEK
+//
+// Changing password → re-wraps DEK with new KEK
+// DEK itself never changes → all existing .enc files still work
+//
+// Storage keys
+// HASH_KEY     — password verification blob (salt + check)  → localStorage + embedded in file
+// DEK_KEY      — wrapped DEK blob                           → localStorage + embedded in file
+// STORAGE_KEY  — encrypted database                         → file / localStorage
+// ══════════════════════════════════════════════════════
+
+const DEK_STORAGE_KEY = 'psycheos_dek'; // wrapped DEK in localStorage
+
+// ── LOW-LEVEL CRYPTO ─────────────────────────────────
+
+async function deriveKey(password, salt) {
+  const enc = new TextEncoder();
+  const km  = await crypto.subtle.importKey(
+    'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    km,
+    { name: 'AES-GCM', length: 256 },
+    true,   // extractable=true so we can export/wrap it
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function encrypt(data, key) {
+  const iv  = crypto.getRandomValues(new Uint8Array(12));
+  const enc = new TextEncoder();
+  const ct  = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(data))
+  );
+  const buf = new Uint8Array(iv.byteLength + ct.byteLength);
+  buf.set(iv, 0);
+  buf.set(new Uint8Array(ct), iv.byteLength);
+  let binary = '';
+  const chunk = 8192;
+  for (let i = 0; i < buf.length; i += chunk)
+    binary += String.fromCharCode(...buf.subarray(i, i + chunk));
+  return btoa(binary);
+}
+
+async function decrypt(b64, key) {
+  const buf = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const iv  = buf.slice(0, 12);
+  const ct  = buf.slice(12);
+  const pt  = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+// ── DEK MANAGEMENT ────────────────────────────────────
+
+// Generate a brand-new random DEK (called only on first launch)
+async function generateDEK() {
+  return crypto.subtle.generateKey(
+    { name: 'AES-GCM', length: 256 },
+    true,   // extractable so we can wrap it
+    ['encrypt', 'decrypt']
+  );
+}
+
+// Export DEK to raw bytes
+async function exportDEK(dek) {
+  const raw = await crypto.subtle.exportKey('raw', dek);
+  let binary = '';
+  const arr = new Uint8Array(raw);
+  for (let i = 0; i < arr.length; i++) binary += String.fromCharCode(arr[i]);
+  return btoa(binary);
+}
+
+// Import DEK from raw bytes
+async function importDEK(b64) {
+  const raw = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM', length: 256 }, true, ['encrypt','decrypt']);
+}
+
+// Wrap DEK with a KEK (password-derived key) → returns encrypted blob
+async function wrapDEK(dek, kek) {
+  const rawB64  = await exportDEK(dek);
+  const wrapped = await encrypt(rawB64, kek);
+  return wrapped; // base64 encrypted blob
+}
+
+// Unwrap DEK with a KEK → returns CryptoKey
+async function unwrapDEK(wrappedB64, kek) {
+  const rawB64 = await decrypt(wrappedB64, kek);
+  return importDEK(rawB64);
+}
+
+// ── PASSWORD MANAGEMENT ───────────────────────────────
+
+async function hashPassword(password) {
+  const salt   = crypto.getRandomValues(new Uint8Array(16));
+  const kek    = await deriveKey(password, salt);
+  let saltStr  = '';
+  for (let i = 0; i < salt.length; i++) saltStr += String.fromCharCode(salt[i]);
+  const saltB64 = btoa(saltStr);
+  const check   = await encrypt({ check: 'PSYCHEOS_OK' }, kek);
+  return { salt: saltB64, check };
+}
+
+// Returns the KEK (password-derived key) if password correct, else null
+async function verifyPassword(password, stored) {
+  try {
+    const salt   = Uint8Array.from(atob(stored.salt), c => c.charCodeAt(0));
+    const kek    = await deriveKey(password, salt);
+    const result = await decrypt(stored.check, kek);
+    if (result.check === 'PSYCHEOS_OK') return kek;
+    return null;
+  } catch { return null; }
+}
+
+// ── UNLOCK ────────────────────────────────────────────
+
+async function attemptUnlock() {
+  const errEl  = document.getElementById('lockError');
+  const passEl = document.getElementById('masterPassInput');
+  errEl.textContent = '';
+
+  const pass = passEl ? passEl.value : '';
+  if (!pass || pass.length < 4) {
+    errEl.textContent = 'Password must be at least 4 characters';
+    return;
+  }
+  if (!window.crypto || !window.crypto.subtle) {
+    errEl.textContent = 'Web Crypto not available — use Chrome or Edge';
+    return;
+  }
+
+  errEl.textContent = 'Verifying...';
+
+  try {
+    // Try to recover hash from file if localStorage is empty
+    let storedHash = localStorage.getItem(HASH_KEY);
+    let storedDEK  = localStorage.getItem(DEK_STORAGE_KEY);
+
+    if ((!storedHash || !storedDEK) && FSA_SUPPORTED && fileHandle) {
+      try {
+        const fc = await readFromFile();
+        if (fc) {
+          const fp = JSON.parse(fc);
+          if (fp && fp.hash && !storedHash) {
+            storedHash = fp.hash;
+            localStorage.setItem(HASH_KEY, fp.hash);
+            console.log('Hash recovered from file');
+          }
+          if (fp && fp.dek && !storedDEK) {
+            storedDEK = fp.dek;
+            localStorage.setItem(DEK_STORAGE_KEY, fp.dek);
+            console.log('DEK recovered from file');
+          }
+        }
+      } catch(e) { console.warn('File recovery failed:', e); }
+    }
+
+    if (!storedHash) {
+      // ── FIRST LAUNCH ───────────────────────────────────
+      const hashed = await hashPassword(pass);
+      const kek    = await verifyPassword(pass, hashed);
+      const dek    = await generateDEK();
+
+      // Wrap DEK with KEK
+      const wrappedDEK = await wrapDEK(dek, kek);
+
+      localStorage.setItem(HASH_KEY, JSON.stringify(hashed));
+      localStorage.setItem(DEK_STORAGE_KEY, wrappedDEK);
+
+      sessionKey = dek; // sessionKey is now the DEK
+
+      await loadDB(); loadSettings(); loadAudit();
+      addAudit('FIRST_LAUNCH', 'System initialized — key wrapping enabled');
+      bootApp();
+
+    } else {
+      // ── EXISTING USER ──────────────────────────────────
+      const hd  = JSON.parse(storedHash);
+      const kek = await verifyPassword(pass, hd);
+      if (!kek) {
+        errEl.textContent = 'Incorrect password. Try again.';
+        return;
+      }
+
+      // Unwrap DEK using KEK
+      if (!storedDEK) {
+        // Legacy user (pre-key-wrapping) — migrate on this login
+        // Generate new DEK, re-encrypt existing data with it
+        errEl.textContent = 'Migrating to secure key format...';
+        const dek        = await generateDEK();
+        const wrappedDEK = await wrapDEK(dek, kek);
+        localStorage.setItem(DEK_STORAGE_KEY, wrappedDEK);
+        sessionKey = dek;
+        // sessionKey was previously the KEK — load with KEK first for migration
+        // then saveDB will re-encrypt with new DEK
+        const legacyKey = kek;
+        await loadDBWithKey(legacyKey);
+        await saveDB(); // re-saves with new DEK
+        loadSettings(); loadAudit();
+        addAudit('MIGRATED', 'Migrated to key-wrapping architecture');
+        bootApp();
+        return;
+      }
+
+      const dek = await unwrapDEK(storedDEK, kek);
+      sessionKey = dek;
+
+      await loadDB(); loadSettings(); loadAudit();
+      addAudit('LOGIN', 'Session started');
+      bootApp();
+    }
+  } catch(e) {
+    errEl.textContent = 'Error: ' + (e.message || 'Unknown. Try Chrome or Edge.');
+    console.error('Unlock error:', e);
+  }
+}
+
+// ── CHANGE PASSWORD ───────────────────────────────────
+// The DEK never changes — we only re-wrap it with the new KEK
+async function changePassword() {
+  const cur = document.getElementById('currentPass').value;
+  const nw  = document.getElementById('newPass').value;
+  const cf  = document.getElementById('confirmPass').value;
+  if (nw !== cf)    { showToast('PASSWORDS DO NOT MATCH', true); return; }
+  if (nw.length < 4){ showToast('NEW PASSWORD TOO SHORT', true); return; }
+
+  const storedHash = localStorage.getItem(HASH_KEY);
+  const storedDEK  = localStorage.getItem(DEK_STORAGE_KEY);
+  if (!storedHash)  { showToast('NO PASSWORD HASH FOUND', true); return; }
+
+  // Verify current password → get current KEK
+  const currentKEK = await verifyPassword(cur, JSON.parse(storedHash));
+  if (!currentKEK) { showToast('CURRENT PASSWORD INCORRECT', true); return; }
+
+  // Generate new hash (new KEK) for new password
+  const newHashed  = await hashPassword(nw);
+  const newKEK     = await verifyPassword(nw, newHashed);
+
+  // Unwrap DEK with old KEK, re-wrap with new KEK
+  // sessionKey IS the DEK — we just need to re-wrap it
+  const rewrappedDEK = await wrapDEK(sessionKey, newKEK);
+
+  // Store new hash and new wrapped DEK
+  const newHashStr = JSON.stringify(newHashed);
+  localStorage.setItem(HASH_KEY, newHashStr);
+  localStorage.setItem(DEK_STORAGE_KEY, rewrappedDEK);
+
+  // saveDB embeds new hash + new wrapped DEK into the .enc file
+  // The DATA itself is NOT re-encrypted — DEK hasn't changed
+  await saveDB();
+
+  showToast('PASSWORD CHANGED — ALL BACKUP FILES STILL WORK');
+  addAudit('PASSWORD_CHANGED', 'Password changed — DEK unchanged — old backups valid');
+  ['currentPass','newPass','confirmPass'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+}
+
+// ── SAVE DB ────────────────────────────────────────────
+async function saveDB() {
+  if (!sessionKey) return;
+
+  const enc = await encrypt(db, sessionKey);
+
+  // Embed hash + wrapped DEK in file so they travel with the data
+  const storedHash = localStorage.getItem(HASH_KEY);
+  const storedDEK  = localStorage.getItem(DEK_STORAGE_KEY);
+  const filePayload = JSON.stringify({ hash: storedHash, dek: storedDEK, data: enc, v: 2 });
+
+  if (FSA_SUPPORTED && fsaReady && fileHandle) {
+    const wrote = await writeToFile(filePayload);
+    if (wrote) {
+      try { localStorage.setItem(STORAGE_KEY, enc); } catch(e) {}
+      localStorage.setItem('psycheos_lastSaved', new Date().toISOString());
+      updateSaveIndicator();
+      updateStorageStatus('file');
+      return;
+    }
+  }
+
+  localStorage.setItem(STORAGE_KEY, enc);
+  localStorage.setItem('psycheos_lastSaved', new Date().toISOString());
+  updateSaveIndicator();
+  updateStorageStatus(FSA_SUPPORTED ? 'none' : 'fallback');
+}
+
+// ── LOAD DB ────────────────────────────────────────────
+async function loadDB() {
+  await loadDBWithKey(sessionKey);
+}
+
+async function loadDBWithKey(key) {
+  if (!key) return;
+
+  let raw = null;
+
+  if (FSA_SUPPORTED && fsaReady && fileHandle) {
+    const filePayloadStr = await readFromFile();
+    if (filePayloadStr) {
+      try {
+        const fp = JSON.parse(filePayloadStr);
+        if (fp && fp.data) {
+          // Restore hash + DEK to localStorage if missing
+          if (fp.hash && !localStorage.getItem(HASH_KEY))
+            localStorage.setItem(HASH_KEY, fp.hash);
+          if (fp.dek && !localStorage.getItem(DEK_STORAGE_KEY))
+            localStorage.setItem(DEK_STORAGE_KEY, fp.dek);
+          raw = fp.data;
+        } else {
+          raw = filePayloadStr; // legacy raw format
+        }
+      } catch(e) { raw = filePayloadStr; }
+    }
+  }
+
+  if (!raw) {
+    raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) updateStorageStatus(FSA_SUPPORTED ? 'none' : 'fallback');
+  }
+
+  if (!raw) return;
+
+  let parsed = null;
+  try {
+    const result = await decrypt(raw, key);
+    if      (result && result.data && Array.isArray(result.data.students)) parsed = result.data;
+    else if (result && result.data && result.data.students !== undefined)  parsed = result.data;
+    else if (result && Array.isArray(result.students))                     parsed = result;
+    else if (result && typeof result === 'object')                         parsed = result;
+  } catch(e) { console.warn('loadDB decrypt failed:', e.message); }
+
+  db = parsed || {};
+  db.students       = db.students       || [];
+  db.sessions       = db.sessions       || [];
+  db.referrals      = db.referrals      || [];
+  db.assessments    = db.assessments    || [];
+  db.tasks          = db.tasks          || [];
+  db.parentMeetings = db.parentMeetings || [];
+}
+
+// ── BACKUP — embed DEK wrapper so backup is self-contained ────────────────
+async function manualBackup() {
+  if (!sessionKey) return;
+  const storedHash = localStorage.getItem(HASH_KEY);
+  const storedDEK  = localStorage.getItem(DEK_STORAGE_KEY);
+  const payload = {
+    version:  '2.0',
+    created:  new Date().toISOString(),
+    data:     db,
+    settings,
+    hash:     storedHash,  // password verification
+    dek:      storedDEK    // wrapped DEK — needed to decrypt on restore
+  };
+  const enc = await encrypt(payload, sessionKey);
+  downloadFile(enc, `psycheos_backup_${dateStamp()}.psycheos`, 'text/plain');
+  localStorage.setItem('psycheos_lastbackup', new Date().toISOString());
+  addAudit('BACKUP_CREATED', 'Backup exported (v2 key-wrapped)');
+  showToast('BACKUP EXPORTED');
+  refreshDashboard();
+}
+
+// ── RESTORE — works regardless of password changes ─────────────────────────
+async function restoreBackup(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const text = await file.text();
+  try {
+    // Try decrypting with current sessionKey (DEK)
+    let payload = null;
+    try {
+      payload = await decrypt(text, sessionKey);
+    } catch(e) {
+      showToast('RESTORE FAILED — file may be from a different device', true);
+      input.value = '';
+      return;
+    }
+
+    const backupData = payload.data || payload;
+    if (!backupData || !backupData.students) throw new Error('Invalid backup format');
+
+    const createdStr = payload.created
+      ? new Date(payload.created).toLocaleString('en-IN') : 'unknown date';
+    if (!confirm(`RESTORE BACKUP from ${createdStr}?\n\nThis will overwrite current data.`)) {
+      input.value = '';
+      return;
+    }
+
+    db = backupData;
+    db.sessions       = db.sessions       || [];
+    db.referrals      = db.referrals      || [];
+    db.assessments    = db.assessments    || [];
+    db.tasks          = db.tasks          || [];
+    db.parentMeetings = db.parentMeetings || [];
+
+    await saveDB();
+    addAudit('RESTORE', `Restored from backup: ${file.name}`);
+    showToast('BACKUP RESTORED');
+    refreshDashboard();
+    refreshSidebarBadges();
+    renderStudentsTable();
+  } catch(e) {
+    showToast('RESTORE FAILED — ' + e.message, true);
+  }
+  input.value = '';
 }
 
 
