@@ -2937,20 +2937,34 @@ function lockApp() {
 
 async function changePassword() {
   const cur = document.getElementById('currentPass').value;
-  const nw = document.getElementById('newPass').value;
-  const cf = document.getElementById('confirmPass').value;
+  const nw  = document.getElementById('newPass').value;
+  const cf  = document.getElementById('confirmPass').value;
   if (nw !== cf) { showToast('PASSWORDS DO NOT MATCH', true); return; }
   if (nw.length < 4) { showToast('NEW PASSWORD TOO SHORT', true); return; }
-  const stored = JSON.parse(localStorage.getItem(HASH_KEY));
-  const verified = await verifyPassword(cur, stored);
+
+  // Verify current password
+  const stored = localStorage.getItem(HASH_KEY);
+  if (!stored) { showToast('NO PASSWORD HASH FOUND', true); return; }
+  const verified = await verifyPassword(cur, JSON.parse(stored));
   if (!verified) { showToast('CURRENT PASSWORD INCORRECT', true); return; }
+
+  // Generate new hash and derive new session key
   const hashed = await hashPassword(nw);
+  const newHashStr = JSON.stringify(hashed);
   sessionKey = await verifyPassword(nw, hashed);
-  localStorage.setItem(HASH_KEY, JSON.stringify(hashed));
+
+  // Store new hash in localStorage BEFORE saveDB so it gets embedded in file
+  localStorage.setItem(HASH_KEY, newHashStr);
+
+  // saveDB now re-encrypts with new sessionKey AND embeds new hash in file
   await saveDB();
-  showToast('PASSWORD UPDATED SUCCESSFULLY');
-  addAudit('PASSWORD_CHANGED', 'Master password updated');
-  ['currentPass','newPass','confirmPass'].forEach(id => document.getElementById(id).value = '');
+
+  showToast('PASSWORD UPDATED — FILE RE-ENCRYPTED');
+  addAudit('PASSWORD_CHANGED', 'Master password updated and file re-encrypted');
+  ['currentPass','newPass','confirmPass'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
 }
 
 // ─── INACTIVITY LOCK ───
