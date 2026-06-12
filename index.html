@@ -1410,97 +1410,73 @@ canvas {
   background:linear-gradient(135deg,#F5F0EB 0%,#EDE3DC 50%,#E8D8D0 100%);
   font-family:'Segoe UI',system-ui,sans-serif;
 ">
-  <div style="font-size:11px;letter-spacing:3px;color:#A86970;margin-bottom:6px;opacity:0.7;">
+  <div style="font-size:10px;letter-spacing:3px;color:#A86970;margin-bottom:6px;opacity:0.7;">
     SCHOOL COUNSELLOR OPERATING SYSTEM
   </div>
   <div style="font-size:32px;font-weight:800;letter-spacing:4px;color:#A86970;margin-bottom:4px;">
     PSYCHE.OS
   </div>
-  <div style="font-size:11px;color:#9B8E8E;letter-spacing:2px;margin-bottom:40px;">
-    Your private clinical workspace
+  <div style="font-size:11px;color:#9B8E8E;letter-spacing:2px;margin-bottom:32px;">
+    By The Human Systems Lab
   </div>
 
   <div style="
-    background:#FFFFFF;border-radius:14px;padding:36px 44px;width:380px;
+    background:#FFFFFF;border-radius:14px;padding:36px 44px;width:400px;
     box-shadow:0 8px 40px rgba(100,60,60,0.14);
   ">
-    <div id="lockNormalView">
-      <div style="font-size:11px;font-weight:600;letter-spacing:1px;color:#9B8E8E;margin-bottom:8px;">
-        MASTER PASSWORD
-      </div>
-      <input
-        type="password"
-        id="masterPassInput"
-        placeholder="Enter your password"
-        autocomplete="new-password"
-        style="
-          display:block;width:100%;box-sizing:border-box;
-          background:#F8F4F1;border:1.5px solid #E2D9D0;border-radius:8px;
-          color:#3D3535;font-size:16px;padding:12px 16px;
-          outline:none;margin-bottom:16px;letter-spacing:1px;
-          font-family:'Segoe UI',system-ui,sans-serif;
-        "
-        onkeydown="if(event.key==='Enter')attemptUnlock()"
-        onfocus="this.style.borderColor='#C4848A';this.style.boxShadow='0 0 0 3px rgba(196,132,138,0.15)'"
-        onblur="this.style.borderColor='#E2D9D0';this.style.boxShadow='none'"
-      />
-      <button
-        onclick="attemptUnlock()"
-        style="
-          display:block;width:100%;background:#C4848A;color:#fff;
-          border:none;border-radius:8px;font-size:14px;font-weight:600;
-          padding:13px;cursor:pointer;letter-spacing:0.5px;
-          font-family:'Segoe UI',system-ui,sans-serif;
-          transition:background 0.2s;
-        "
-        onmouseover="this.style.background='#A86970'"
-        onmouseout="this.style.background='#C4848A'"
-      >Unlock</button>
-      <div id="lockError" style="
-        color:#B85050;font-size:12px;margin-top:10px;
-        text-align:center;min-height:18px;
-      "></div>
-      <div id="lockHint" style="
-        color:#9B8E8E;font-size:11px;margin-top:12px;
-        text-align:center;
-      ">FIRST LAUNCH: ANY PASSWORD SETS YOUR MASTER KEY</div>
-      <div style="margin-top:20px;padding-top:16px;border-top:1px solid #F0E8E0;text-align:center;">
-        <span
-          style="font-size:11px;color:#C4848A;cursor:pointer;text-decoration:underline;"
-          onclick="document.getElementById('lockNormalView').style.display='none';document.getElementById('lockRecoveryView').style.display='block'"
-        >Forgot password or data recovery</span>
-      </div>
+    <div style="font-size:13px;font-weight:600;color:#3D3535;margin-bottom:6px;">
+      Your Name
     </div>
-
-    <div id="lockRecoveryView" style="display:none;">
-      <div style="font-size:13px;font-weight:600;color:#3D3535;margin-bottom:8px;">Data Recovery</div>
-      <div style="font-size:12px;color:#9B8E8E;margin-bottom:16px;line-height:1.6;">
-        Your data is stored in your browser under the key <code style="background:#F5F0EB;padding:2px 5px;border-radius:3px;font-size:11px;">psycheos_data</code>.
-        If you remember your password, just go back and try it.<br><br>
-        If you have a <strong>.psycheos backup file</strong>, you can restore it after resetting.
-      </div>
-      <button
-        onclick="exportRawData()"
-        style="display:block;width:100%;background:#6A90B8;color:#fff;border:none;border-radius:8px;
-          font-size:13px;font-weight:600;padding:11px;cursor:pointer;margin-bottom:10px;
-          font-family:'Segoe UI',system-ui,sans-serif;"
-      >⤓ Download raw data (if accessible)</button>
-      <button
-        onclick="resetPasswordOnly()"
-        style="display:block;width:100%;background:#C4924A;color:#fff;border:none;border-radius:8px;
-          font-size:13px;font-weight:600;padding:11px;cursor:pointer;margin-bottom:10px;
-          font-family:'Segoe UI',system-ui,sans-serif;"
-      >🔑 Reset password (keeps data if recoverable)</button>
-      <button
-        onclick="if(confirm('This deletes ALL records permanently. Are you sure?')){localStorage.clear();location.reload();}"
-        style="display:block;width:100%;background:#B85050;color:#fff;border:none;border-radius:8px;
-          font-size:13px;font-weight:600;padding:11px;cursor:pointer;margin-bottom:16px;
-          font-family:'Segoe UI',system-ui,sans-serif;"
-      >✕ Wipe everything &amp; start fresh</button>
-      <span
-        style="font-size:11px;color:#C4848A;cursor:pointer;text-decoration:underline;"
-        onclick="document.getElementById('lockNormalView').style.display='block';document.getElementById('lockRecoveryView').style.display='none'"
-      >← Back to login</span>
+    <input
+      type="text"
+      id="counsellorNameInput"
+      placeholder="e.g. Jithin Thomas"
+      autocomplete="off"
+      style="
+        display:block;width:100%;box-sizing:border-box;
+        background:#F8F4F1;border:1.5px solid #E2D9D0;border-radius:8px;
+        color:#3D3535;font-size:15px;padding:12px 16px;
+        outline:none;margin-bottom:10px;
+        font-family:'Segoe UI',system-ui,sans-serif;
+      "
+      onkeydown="if(event.key==='Enter')startApp()"
+      onfocus="this.style.borderColor='#C4848A';this.style.boxShadow='0 0 0 3px rgba(196,132,138,0.15)'"
+      onblur="this.style.borderColor='#E2D9D0';this.style.boxShadow='none'"
+    />
+    <div style="font-size:13px;font-weight:600;color:#3D3535;margin-bottom:6px;">
+      School Name
+    </div>
+    <input
+      type="text"
+      id="schoolNameInput"
+      placeholder="e.g. St. Thomas School"
+      autocomplete="off"
+      style="
+        display:block;width:100%;box-sizing:border-box;
+        background:#F8F4F1;border:1.5px solid #E2D9D0;border-radius:8px;
+        color:#3D3535;font-size:15px;padding:12px 16px;
+        outline:none;margin-bottom:20px;
+        font-family:'Segoe UI',system-ui,sans-serif;
+      "
+      onkeydown="if(event.key==='Enter')startApp()"
+      onfocus="this.style.borderColor='#C4848A';this.style.boxShadow='0 0 0 3px rgba(196,132,138,0.15)'"
+      onblur="this.style.borderColor='#E2D9D0';this.style.boxShadow='none'"
+    />
+    <button
+      onclick="startApp()"
+      style="
+        display:block;width:100%;background:#C4848A;color:#FFFFFF;
+        border:none;border-radius:8px;font-size:14px;font-weight:600;
+        padding:13px;cursor:pointer;
+        font-family:'Segoe UI',system-ui,sans-serif;
+        transition:background 0.2s;
+      "
+      onmouseover="this.style.background='#A86970'"
+      onmouseout="this.style.background='#C4848A'"
+    >Open PSYCHE.OS</button>
+    <div id="startError" style="color:#B85050;font-size:12px;margin-top:10px;text-align:center;min-height:18px;"></div>
+    <div style="margin-top:16px;font-size:11px;color:#9B8E8E;text-align:center;line-height:1.6;">
+      Your data is stored locally on this device.<br>No password required.
     </div>
   </div>
 </div>
@@ -1522,7 +1498,7 @@ canvas {
   font-size:10px;font-family:var(--sans);color:var(--warn);
   margin-right:12px;cursor:pointer;opacity:0.8;
   " title="Storage status">⬛ CHECKING...</span>
-    <button class="topbar-lock" onclick="lockApp()">⬛ LOCK</button>
+    <button class="topbar-lock" onclick="lockApp()">⬛ SWITCH USER</button>
   </div>
 
   <div class="main-layout">
@@ -1673,15 +1649,15 @@ canvas {
               <div style="display:flex;flex-direction:column;gap:8px;padding-top:4px;">
                 <div class="profile-meta-row">
                   <span class="profile-meta-label">ENCRYPTION</span>
-                  <span style="color:var(--primary);font-family:var(--mono);font-size:10px;">AES-256-GCM ✓</span>
+                  <span style="color:var(--text-dim);font-family:var(--mono);font-size:10px;">None (plain storage)</span>
                 </div>
                 <div class="profile-meta-row">
                   <span class="profile-meta-label">KEY DERIVATION</span>
-                  <span style="color:var(--primary);font-family:var(--mono);font-size:10px;">PBKDF2 ✓</span>
+                  <span style="color:var(--primary);font-family:var(--mono);font-size:10px);">Plain JSON</span>
                 </div>
                 <div class="profile-meta-row">
                   <span class="profile-meta-label">STORAGE</span>
-                  <span style="color:var(--primary);font-family:var(--mono);font-size:10px;">LOCAL ENCRYPTED ✓</span>
+                  <span style="color:var(--primary);font-family:var(--mono);font-size:10px;">LOCAL PLAIN JSON ✓</span>
                 </div>
                 <div class="profile-meta-row">
                   <span class="profile-meta-label">LAST BACKUP</span>
@@ -1906,7 +1882,7 @@ canvas {
   </div><!-- /main-layout -->
 
   <div class="statusbar">
-    <div class="sb-item"><div class="sb-dot"></div><span>PSYCHE.OS v1.0 — PHASE 1</span></div>
+    <div class="sb-item"><div class="sb-dot"></div><span>PSYCHE.OS v2 — NO ENCRYPTION</span></div>
     <div class="sb-item"><span id="sb-records">0 RECORDS</span></div>
     <div class="sb-item"><span id="sb-status">SYSTEM NOMINAL</span></div>
     <div class="sb-item" style="margin-left:auto;"><span>ST. THOMAS SCHOOL — DELHI NCR</span></div>
@@ -2601,142 +2577,7 @@ function updateSaveIndicator() {
   });
 }
 
-function exportPlainTextBackup() {
-  const lines = [];
-  const now = new Date().toLocaleString('en-IN', {
-    weekday:'long', day:'2-digit', month:'long',
-    year:'numeric', hour:'2-digit', minute:'2-digit'
-  });
 
-  lines.push('PSYCHE.OS — PLAIN TEXT BACKUP');
-  lines.push('Generated: ' + now);
-  lines.push('School: ' + (settings.schoolName || 'St. Thomas School'));
-  lines.push('Counsellor: ' + (settings.counsellorName || ''));
-  lines.push('Total students: ' + (db.students||[]).length);
-  lines.push('Total sessions: ' + (db.sessions||[]).length);
-  lines.push('Total referrals: ' + (db.referrals||[]).length);
-  lines.push('='.repeat(60));
-  lines.push('');
-
-  // Students
-  lines.push('STUDENT RECORDS');
-  lines.push('-'.repeat(60));
-  (db.students||[]).forEach((s, i) => {
-    lines.push('');
-    lines.push(`[${i+1}] ${s.name} — ${s.id}`);
-    lines.push(`  Class: ${s.class || '—'} ${s.section || ''} | Gender: ${s.gender || '—'}`);
-    lines.push(`  DOB: ${s.dob || '—'} | House: ${s.house || '—'}`);
-    lines.push(`  Status: ${s.status || '—'} | Referral: ${s.referralSource || '—'}`);
-    lines.push(`  Consent: ${s.consent || '—'} | Teacher: ${s.teacher || '—'}`);
-    lines.push(`  Parent: ${s.parentName || '—'} (${s.parentRel || '—'}) — ${s.parentContact || '—'}`);
-    if (s.concern) lines.push(`  Presenting: ${s.concern}`);
-    if ((s.riskFlags||[]).length > 0) lines.push(`  RISK FLAGS: ${s.riskFlags.join(', ')}`);
-    if ((s.tags||[]).length > 0) lines.push(`  Tags: ${s.tags.join(', ')}`);
-    if (s.notes) lines.push(`  Notes: ${s.notes}`);
-
-    // Intake
-    if (s.intake && Object.values(s.intake).some(v => v)) {
-      lines.push('  -- INTAKE --');
-      const ix = s.intake;
-      if (ix.presentingConcern) lines.push(`  Presenting: ${ix.presentingConcern}`);
-      if (ix.strengths) lines.push(`  Strengths: ${ix.strengths}`);
-      if (ix.protective) lines.push(`  Protective: ${ix.protective}`);
-      if (ix.hypothesis) lines.push(`  Hypothesis: ${ix.hypothesis}`);
-    }
-
-    // Sessions
-    const sessions = (db.sessions||[]).filter(ss => ss.studentId === s.id);
-    if (sessions.length > 0) {
-      lines.push(`  -- SESSIONS (${sessions.length}) --`);
-      sessions.forEach(ss => {
-        lines.push(`  S${ss.sessionNumber} [${new Date(ss.date).toLocaleDateString('en-IN')}] ${ss.type} — ${ss.duration || '?'} min`);
-        if (ss.presentingIssue) lines.push(`    Issue: ${ss.presentingIssue}`);
-        if ((ss.themes||[]).length) lines.push(`    Themes: ${ss.themes.join(', ')}`);
-        if ((ss.interventions||[]).length) lines.push(`    Interventions: ${ss.interventions.join(', ')}`);
-        if (ss.studentResponse) lines.push(`    Response: ${ss.studentResponse}`);
-        if (ss.homework) lines.push(`    Homework: ${ss.homework}`);
-        if (ss.nextSteps) lines.push(`    Next: ${ss.nextSteps}`);
-        if (ss.riskNote) lines.push(`    *** RISK: ${ss.riskNote} ***`);
-        if (ss.freeNotes) lines.push(`    Notes: ${ss.freeNotes}`);
-      });
-    }
-
-    // Risk assessment
-    if (s.riskAssess && s.riskAssess.overallRisk) {
-      lines.push(`  -- RISK ASSESSMENT --`);
-      lines.push(`  Overall: ${s.riskAssess.overallRisk}`);
-      if (s.riskAssess.summary) lines.push(`  Summary: ${s.riskAssess.summary}`);
-    }
-
-    // Formulation
-    if (s.formulation && s.formulation.presenting) {
-      lines.push(`  -- 6P FORMULATION --`);
-      const fm = s.formulation;
-      if (fm.presenting)    lines.push(`  P1 Presenting: ${fm.presenting}`);
-      if (fm.predisposing)  lines.push(`  P2 Predisposing: ${fm.predisposing}`);
-      if (fm.precipitating) lines.push(`  P3 Precipitating: ${fm.precipitating}`);
-      if (fm.perpetuating)  lines.push(`  P4 Perpetuating: ${fm.perpetuating}`);
-      if (fm.protective)    lines.push(`  P5 Protective: ${fm.protective}`);
-      if (fm.cultural)      lines.push(`  P6 Cultural: ${fm.cultural}`);
-      if (fm.hypothesis)    lines.push(`  Hypothesis: ${fm.hypothesis}`);
-    }
-
-    // Assessments
-    const assessments = (s.assessments||[]);
-    if (assessments.length > 0) {
-      lines.push(`  -- ASSESSMENTS --`);
-      assessments.forEach(a => {
-        lines.push(`  ${a.type.toUpperCase()} [${a.date || new Date(a.savedAt).toLocaleDateString('en-IN')}] Score: ${a.score !== undefined ? a.score : '—'} — ${a.severity || a.risk || '—'}`);
-      });
-    }
-
-    // Treatment
-    if (s.treatment && (s.treatment.goals||[]).length > 0) {
-      lines.push(`  -- TREATMENT GOALS --`);
-      (s.treatment.goals||[]).forEach((g, gi) => {
-        lines.push(`  G${gi+1} [${g.status || '—'}] ${g.progress||0}% — ${g.goal || '—'}`);
-      });
-    }
-
-    lines.push('');
-  });
-
-  // Referrals
-  if ((db.referrals||[]).length > 0) {
-    lines.push('');
-    lines.push('REFERRALS');
-    lines.push('-'.repeat(60));
-    (db.referrals||[]).forEach(r => {
-      lines.push(`[${r.id}] ${r.studentName} — ${r.referredBy} (${r.referredByRole||'—'}) — ${r.urgency||'—'} — ${r.status||'—'}`);
-      if (r.concern) lines.push(`  Concern: ${r.concern}`);
-    });
-    lines.push('');
-  }
-
-  // Tasks
-  const pendingTasks = (db.tasks||[]).filter(t => t.status !== 'Done');
-  if (pendingTasks.length > 0) {
-    lines.push('');
-    lines.push('PENDING TASKS');
-    lines.push('-'.repeat(60));
-    pendingTasks.forEach(t => {
-      lines.push(`[${t.status}] ${t.title} — Due: ${t.dueDate || '—'} — ${t.category || '—'}`);
-      if (t.linkedStudent) lines.push(`  Student: ${t.linkedStudent}`);
-    });
-    lines.push('');
-  }
-
-  lines.push('='.repeat(60));
-  lines.push('END OF BACKUP — ' + now);
-
-  const txt = lines.join('\n');
-  const stamp = new Date().toISOString().slice(0,16).replace('T','_').replace(':','-');
-  downloadFile(txt, 'PSYCHEOS_backup_' + stamp + '.txt', 'text/plain');
-  localStorage.setItem('psycheos_lastbackup', new Date().toISOString());
-  addAudit('BACKUP_PLAINTEXT', 'Plain text backup exported');
-  showToast('PLAIN TEXT BACKUP DOWNLOADED');
-  refreshDashboard();
-}
 
 // loadDB replaced by FSA layer above
 
@@ -2793,8 +2634,9 @@ function exportAuditLog() {
 
 function bootApp() {
   const g = id => document.getElementById(id);
-  // Init FSA — reconnects to last used file silently
   initFileHandle();
+  // Load from file if available
+  loadDBFromFile();
   const lockScreen = g('lockScreen'); if(lockScreen) lockScreen.style.display = 'none';
   const app = g('app'); if(app) app.style.display = 'flex';
   sessionStart = new Date();
@@ -2815,7 +2657,7 @@ function bootApp() {
 // ─── INACTIVITY LOCK ───
 function resetInactivityTimer() {
   clearTimeout(inactivityTimer);
-  inactivityTimer = setTimeout(() => { if (sessionKey) lockApp(); }, (settings.lockTimeout || 15) * 60 * 1000);
+  inactivityTimer = setTimeout(() => { /* no auto-lock in plain mode */ void(0); }, (settings.lockTimeout || 15) * 60 * 1000);
 }
 
 function startInactivityTimer() {
@@ -8031,22 +7873,7 @@ function renderSettingsView() {
           <button class="btn-primary" onclick="saveSettings()">SAVE SETTINGS</button>
         </div>
 
-        <div class="dash-panel" style="margin-bottom:16px;">
-          <div class="dash-panel-title">CHANGE MASTER PASSWORD</div>
-          <div class="form-group" style="margin-bottom:10px;">
-            <div class="form-label">CURRENT PASSWORD</div>
-            <input type="password" class="form-input" id="currentPass" autocomplete="off" />
-          </div>
-          <div class="form-group" style="margin-bottom:10px;">
-            <div class="form-label">NEW PASSWORD</div>
-            <input type="password" class="form-input" id="newPass" autocomplete="off" />
-          </div>
-          <div class="form-group" style="margin-bottom:14px;">
-            <div class="form-label">CONFIRM NEW PASSWORD</div>
-            <input type="password" class="form-input" id="confirmPass" autocomplete="off" />
-          </div>
-          <button class="btn-primary" onclick="changePassword()">UPDATE PASSWORD</button>
-        </div>
+
 
         <div class="dash-panel" style="border-left:3px solid var(--danger);">
           <div class="dash-panel-title" style="color:var(--danger);">DANGER ZONE</div>
@@ -8086,270 +7913,97 @@ function renderSettingsView() {
 // STORAGE_KEY  — encrypted database                         → file / localStorage
 // ══════════════════════════════════════════════════════
 
-const DEK_STORAGE_KEY = 'psycheos_dek'; // wrapped DEK in localStorage
+ // wrapped DEK in localStorage
 
 // ── LOW-LEVEL CRYPTO ─────────────────────────────────
 
-async function deriveKey(password, salt) {
-  const enc = new TextEncoder();
-  const km  = await crypto.subtle.importKey(
-    'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
-  );
-  return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
-    km,
-    { name: 'AES-GCM', length: 256 },
-    true,   // extractable=true so we can export/wrap it
-    ['encrypt', 'decrypt']
-  );
-}
 
-async function encrypt(data, key) {
-  const iv  = crypto.getRandomValues(new Uint8Array(12));
-  const enc = new TextEncoder();
-  const ct  = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(data))
-  );
-  const buf = new Uint8Array(iv.byteLength + ct.byteLength);
-  buf.set(iv, 0);
-  buf.set(new Uint8Array(ct), iv.byteLength);
-  let binary = '';
-  const chunk = 8192;
-  for (let i = 0; i < buf.length; i += chunk)
-    binary += String.fromCharCode(...buf.subarray(i, i + chunk));
-  return btoa(binary);
-}
 
-async function decrypt(b64, key) {
-  const buf = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-  const iv  = buf.slice(0, 12);
-  const ct  = buf.slice(12);
-  const pt  = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
-  return JSON.parse(new TextDecoder().decode(pt));
-}
+
+
+
 
 // ── DEK MANAGEMENT ────────────────────────────────────
 
 // Generate a brand-new random DEK (called only on first launch)
-async function generateDEK() {
-  return crypto.subtle.generateKey(
-    { name: 'AES-GCM', length: 256 },
-    true,   // extractable so we can wrap it
-    ['encrypt', 'decrypt']
-  );
-}
+
 
 // Export DEK to raw bytes
-async function exportDEK(dek) {
-  const raw = await crypto.subtle.exportKey('raw', dek);
-  let binary = '';
-  const arr = new Uint8Array(raw);
-  for (let i = 0; i < arr.length; i++) binary += String.fromCharCode(arr[i]);
-  return btoa(binary);
-}
+
 
 // Import DEK from raw bytes
-async function importDEK(b64) {
-  const raw = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-  return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM', length: 256 }, true, ['encrypt','decrypt']);
-}
+
 
 // Wrap DEK with a KEK (password-derived key) → returns encrypted blob
-async function wrapDEK(dek, kek) {
-  const rawB64  = await exportDEK(dek);
-  const wrapped = await encrypt(rawB64, kek);
-  return wrapped; // base64 encrypted blob
-}
+
 
 // Unwrap DEK with a KEK → returns CryptoKey
-async function unwrapDEK(wrappedB64, kek) {
-  const rawB64 = await decrypt(wrappedB64, kek);
-  return importDEK(rawB64);
-}
+
 
 // ── PASSWORD MANAGEMENT ───────────────────────────────
 
-async function hashPassword(password) {
-  const salt   = crypto.getRandomValues(new Uint8Array(16));
-  const kek    = await deriveKey(password, salt);
-  let saltStr  = '';
-  for (let i = 0; i < salt.length; i++) saltStr += String.fromCharCode(salt[i]);
-  const saltB64 = btoa(saltStr);
-  const check   = await encrypt({ check: 'PSYCHEOS_OK' }, kek);
-  return { salt: saltB64, check };
-}
+
 
 // Returns the KEK (password-derived key) if password correct, else null
-async function verifyPassword(password, stored) {
-  try {
-    const salt   = Uint8Array.from(atob(stored.salt), c => c.charCodeAt(0));
-    const kek    = await deriveKey(password, salt);
-    const result = await decrypt(stored.check, kek);
-    if (result.check === 'PSYCHEOS_OK') return kek;
-    return null;
-  } catch { return null; }
-}
+
 
 // ── UNLOCK ────────────────────────────────────────────
 
-async function attemptUnlock() {
-  const errEl  = document.getElementById('lockError');
-  const passEl = document.getElementById('masterPassInput');
-  errEl.textContent = '';
 
-  const pass = passEl ? passEl.value : '';
-  if (!pass || pass.length < 4) {
-    errEl.textContent = 'Password must be at least 4 characters';
-    return;
-  }
-  if (!window.crypto || !window.crypto.subtle) {
-    errEl.textContent = 'Web Crypto not available — use Chrome or Edge';
-    return;
-  }
-
-  errEl.textContent = 'Verifying...';
-
-  try {
-    // Try to recover hash from file if localStorage is empty
-    let storedHash = localStorage.getItem(HASH_KEY);
-    let storedDEK  = localStorage.getItem(DEK_STORAGE_KEY);
-
-    if ((!storedHash || !storedDEK) && FSA_SUPPORTED && fileHandle) {
-      try {
-        const fc = await readFromFile();
-        if (fc) {
-          const fp = JSON.parse(fc);
-          if (fp && fp.hash && !storedHash) {
-            storedHash = fp.hash;
-            localStorage.setItem(HASH_KEY, fp.hash);
-            console.log('Hash recovered from file');
-          }
-          if (fp && fp.dek && !storedDEK) {
-            storedDEK = fp.dek;
-            localStorage.setItem(DEK_STORAGE_KEY, fp.dek);
-            console.log('DEK recovered from file');
-          }
-        }
-      } catch(e) { console.warn('File recovery failed:', e); }
-    }
-
-    if (!storedHash) {
-      // ── FIRST LAUNCH ───────────────────────────────────
-      const hashed = await hashPassword(pass);
-      const kek    = await verifyPassword(pass, hashed);
-      const dek    = await generateDEK();
-
-      // Wrap DEK with KEK
-      const wrappedDEK = await wrapDEK(dek, kek);
-
-      localStorage.setItem(HASH_KEY, JSON.stringify(hashed));
-      localStorage.setItem(DEK_STORAGE_KEY, wrappedDEK);
-
-      sessionKey = dek; // sessionKey is now the DEK
-
-      await loadDB(); loadSettings(); loadAudit();
-      addAudit('FIRST_LAUNCH', 'System initialized — key wrapping enabled');
-      bootApp();
-
-    } else {
-      // ── EXISTING USER ──────────────────────────────────
-      const hd  = JSON.parse(storedHash);
-      const kek = await verifyPassword(pass, hd);
-      if (!kek) {
-        errEl.textContent = 'Incorrect password. Try again.';
-        return;
-      }
-
-      // Unwrap DEK using KEK
-      if (!storedDEK) {
-        // Legacy user (pre-key-wrapping) — migrate on this login
-        // Generate new DEK, re-encrypt existing data with it
-        errEl.textContent = 'Migrating to secure key format...';
-        const dek        = await generateDEK();
-        const wrappedDEK = await wrapDEK(dek, kek);
-        localStorage.setItem(DEK_STORAGE_KEY, wrappedDEK);
-        sessionKey = dek;
-        // sessionKey was previously the KEK — load with KEK first for migration
-        // then saveDB will re-encrypt with new DEK
-        const legacyKey = kek;
-        await loadDBWithKey(legacyKey);
-        await saveDB(); // re-saves with new DEK
-        loadSettings(); loadAudit();
-        addAudit('MIGRATED', 'Migrated to key-wrapping architecture');
-        bootApp();
-        return;
-      }
-
-      const dek = await unwrapDEK(storedDEK, kek);
-      sessionKey = dek;
-
-      await loadDB(); loadSettings(); loadAudit();
-      addAudit('LOGIN', 'Session started');
-      bootApp();
-    }
-  } catch(e) {
-    errEl.textContent = 'Error: ' + (e.message || 'Unknown. Try Chrome or Edge.');
-    console.error('Unlock error:', e);
-  }
-}
 
 // ── CHANGE PASSWORD ───────────────────────────────────
 // The DEK never changes — we only re-wrap it with the new KEK
-async function changePassword() {
-  const cur = document.getElementById('currentPass').value;
-  const nw  = document.getElementById('newPass').value;
-  const cf  = document.getElementById('confirmPass').value;
-  if (nw !== cf)    { showToast('PASSWORDS DO NOT MATCH', true); return; }
-  if (nw.length < 4){ showToast('NEW PASSWORD TOO SHORT', true); return; }
 
-  const storedHash = localStorage.getItem(HASH_KEY);
-  const storedDEK  = localStorage.getItem(DEK_STORAGE_KEY);
-  if (!storedHash)  { showToast('NO PASSWORD HASH FOUND', true); return; }
-
-  // Verify current password → get current KEK
-  const currentKEK = await verifyPassword(cur, JSON.parse(storedHash));
-  if (!currentKEK) { showToast('CURRENT PASSWORD INCORRECT', true); return; }
-
-  // Generate new hash (new KEK) for new password
-  const newHashed  = await hashPassword(nw);
-  const newKEK     = await verifyPassword(nw, newHashed);
-
-  // Unwrap DEK with old KEK, re-wrap with new KEK
-  // sessionKey IS the DEK — we just need to re-wrap it
-  const rewrappedDEK = await wrapDEK(sessionKey, newKEK);
-
-  // Store new hash and new wrapped DEK
-  const newHashStr = JSON.stringify(newHashed);
-  localStorage.setItem(HASH_KEY, newHashStr);
-  localStorage.setItem(DEK_STORAGE_KEY, rewrappedDEK);
-
-  // saveDB embeds new hash + new wrapped DEK into the .enc file
-  // The DATA itself is NOT re-encrypted — DEK hasn't changed
-  await saveDB();
-
-  showToast('PASSWORD CHANGED — ALL BACKUP FILES STILL WORK');
-  addAudit('PASSWORD_CHANGED', 'Password changed — DEK unchanged — old backups valid');
-  ['currentPass','newPass','confirmPass'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-}
 
 // ── SAVE DB ────────────────────────────────────────────
+
+
+// ── LOAD DB ────────────────────────────────────────────
+
+
+
+
+// ── BACKUP — embed DEK wrapper so backup is self-contained ────────────────
+
+
+// ── RESTORE — works regardless of password changes ─────────────────────────
+
+
+
+
+// ══════════════════════════════════════════════════════
+// PLAIN STORAGE — No encryption
+// Data stored as plain JSON in localStorage and/or file
+// ══════════════════════════════════════════════════════
+
+function startApp() {
+  const nameEl   = document.getElementById('counsellorNameInput');
+  const schoolEl = document.getElementById('schoolNameInput');
+  const errEl    = document.getElementById('startError');
+  const name     = nameEl ? nameEl.value.trim() : '';
+  const school   = schoolEl ? schoolEl.value.trim() : '';
+
+  if (!name) { errEl.textContent = 'Please enter your name'; return; }
+
+  // Save profile
+  settings.counsellorName = name;
+  settings.schoolName     = school || 'School';
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+
+  loadData();
+  loadAudit();
+  addAudit('LOGIN', 'Session started — ' + name);
+  bootApp();
+}
+
 async function saveDB() {
-  if (!sessionKey) return;
+  const payload = JSON.stringify({ db, savedAt: new Date().toISOString(), v: 'plain' });
 
-  const enc = await encrypt(db, sessionKey);
-
-  // Embed hash + wrapped DEK in file so they travel with the data
-  const storedHash = localStorage.getItem(HASH_KEY);
-  const storedDEK  = localStorage.getItem(DEK_STORAGE_KEY);
-  const filePayload = JSON.stringify({ hash: storedHash, dek: storedDEK, data: enc, v: 2 });
-
+  // Try File System Access first
   if (FSA_SUPPORTED && fsaReady && fileHandle) {
-    const wrote = await writeToFile(filePayload);
+    const wrote = await writeToFile(payload);
     if (wrote) {
-      try { localStorage.setItem(STORAGE_KEY, enc); } catch(e) {}
+      try { localStorage.setItem(STORAGE_KEY, payload); } catch(e) {}
       localStorage.setItem('psycheos_lastSaved', new Date().toISOString());
       updateSaveIndicator();
       updateStorageStatus('file');
@@ -8357,58 +8011,28 @@ async function saveDB() {
     }
   }
 
-  localStorage.setItem(STORAGE_KEY, enc);
+  localStorage.setItem(STORAGE_KEY, payload);
   localStorage.setItem('psycheos_lastSaved', new Date().toISOString());
   updateSaveIndicator();
   updateStorageStatus(FSA_SUPPORTED ? 'none' : 'fallback');
 }
 
-// ── LOAD DB ────────────────────────────────────────────
-async function loadDB() {
-  await loadDBWithKey(sessionKey);
-}
-
-async function loadDBWithKey(key) {
-  if (!key) return;
-
+function loadData() {
   let raw = null;
 
-  if (FSA_SUPPORTED && fsaReady && fileHandle) {
-    const filePayloadStr = await readFromFile();
-    if (filePayloadStr) {
-      try {
-        const fp = JSON.parse(filePayloadStr);
-        if (fp && fp.data) {
-          // Restore hash + DEK to localStorage if missing
-          if (fp.hash && !localStorage.getItem(HASH_KEY))
-            localStorage.setItem(HASH_KEY, fp.hash);
-          if (fp.dek && !localStorage.getItem(DEK_STORAGE_KEY))
-            localStorage.setItem(DEK_STORAGE_KEY, fp.dek);
-          raw = fp.data;
-        } else {
-          raw = filePayloadStr; // legacy raw format
-        }
-      } catch(e) { raw = filePayloadStr; }
-    }
-  }
-
-  if (!raw) {
-    raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) updateStorageStatus(FSA_SUPPORTED ? 'none' : 'fallback');
-  }
-
+  // Try file first
+  // (sync wrapper — file reading is async but handled in bootApp flow)
+  raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) return;
 
-  let parsed = null;
   try {
-    const result = await decrypt(raw, key);
-    if      (result && result.data && Array.isArray(result.data.students)) parsed = result.data;
-    else if (result && result.data && result.data.students !== undefined)  parsed = result.data;
-    else if (result && Array.isArray(result.students))                     parsed = result;
-    else if (result && typeof result === 'object')                         parsed = result;
-  } catch(e) { console.warn('loadDB decrypt failed:', e.message); }
+    const payload = JSON.parse(raw);
+    const data    = payload.db || payload;
+    db = data || {};
+  } catch(e) {
+    try { db = JSON.parse(raw); } catch(e2) { db = {}; }
+  }
 
-  db = parsed || {};
   db.students       = db.students       || [];
   db.sessions       = db.sessions       || [];
   db.referrals      = db.referrals      || [];
@@ -8417,62 +8041,86 @@ async function loadDBWithKey(key) {
   db.parentMeetings = db.parentMeetings || [];
 }
 
-// ── BACKUP — embed DEK wrapper so backup is self-contained ────────────────
-async function manualBackup() {
-  if (!sessionKey) return;
-  const storedHash = localStorage.getItem(HASH_KEY);
-  const storedDEK  = localStorage.getItem(DEK_STORAGE_KEY);
-  const payload = {
-    version:  '2.0',
-    created:  new Date().toISOString(),
-    data:     db,
-    settings,
-    hash:     storedHash,  // password verification
-    dek:      storedDEK    // wrapped DEK — needed to decrypt on restore
-  };
-  const enc = await encrypt(payload, sessionKey);
-  downloadFile(enc, `psycheos_backup_${dateStamp()}.psycheos`, 'text/plain');
-  localStorage.setItem('psycheos_lastbackup', new Date().toISOString());
-  addAudit('BACKUP_CREATED', 'Backup exported (v2 key-wrapped)');
-  showToast('BACKUP EXPORTED');
-  refreshDashboard();
-}
-
-// ── RESTORE — works regardless of password changes ─────────────────────────
-async function restoreBackup(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const text = await file.text();
+async function loadDBFromFile() {
+  if (!FSA_SUPPORTED || !fsaReady || !fileHandle) return;
+  const raw = await readFromFile();
+  if (!raw) return;
   try {
-    // Try decrypting with current sessionKey (DEK)
-    let payload = null;
-    try {
-      payload = await decrypt(text, sessionKey);
-    } catch(e) {
-      showToast('RESTORE FAILED — file may be from a different device', true);
-      input.value = '';
-      return;
-    }
-
-    const backupData = payload.data || payload;
-    if (!backupData || !backupData.students) throw new Error('Invalid backup format');
-
-    const createdStr = payload.created
-      ? new Date(payload.created).toLocaleString('en-IN') : 'unknown date';
-    if (!confirm(`RESTORE BACKUP from ${createdStr}?\n\nThis will overwrite current data.`)) {
-      input.value = '';
-      return;
-    }
-
-    db = backupData;
+    const payload = JSON.parse(raw);
+    const data    = payload.db || payload;
+    db = data || {};
+    db.students       = db.students       || [];
     db.sessions       = db.sessions       || [];
     db.referrals      = db.referrals      || [];
     db.assessments    = db.assessments    || [];
     db.tasks          = db.tasks          || [];
     db.parentMeetings = db.parentMeetings || [];
+    try { localStorage.setItem(STORAGE_KEY, raw); } catch(e) {}
+    updateStorageStatus('file');
+  } catch(e) { console.warn('File load failed:', e); }
+}
 
+function loadSettings() {
+  const raw = localStorage.getItem(SETTINGS_KEY);
+  if (raw) {
+    try { settings = { ...settings, ...JSON.parse(raw) }; } catch(e) {}
+  }
+}
+
+// Lock becomes a "switch user" — clears session but keeps data
+function lockApp() {
+  addAudit('LOGOUT', 'Session ended');
+  document.getElementById('app').style.display = 'none';
+  const ls = document.getElementById('lockScreen');
+  if (ls) ls.style.display = 'flex';
+  const ni = document.getElementById('counsellorNameInput');
+  if (ni) ni.value = settings.counsellorName || '';
+  const si = document.getElementById('schoolNameInput');
+  if (si) si.value = settings.schoolName || '';
+  clearInterval(window._clockInterval);
+}
+
+function changePassword() {
+  showToast('No password in plain storage mode');
+}
+
+// Backup — plain JSON zip
+async function manualBackup() {
+  const payload = {
+    version:  'plain-1.0',
+    created:  new Date().toISOString(),
+    data:     db,
+    settings
+  };
+  downloadFile(JSON.stringify(payload, null, 2),
+    'psycheos_backup_' + dateStamp() + '.psycheos', 'text/plain');
+  localStorage.setItem('psycheos_lastbackup', new Date().toISOString());
+  addAudit('BACKUP_CREATED', 'Plain backup exported');
+  showToast('BACKUP EXPORTED');
+  refreshDashboard();
+}
+
+async function restoreBackup(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const text = await file.text();
+  try {
+    const payload = JSON.parse(text);
+    const data    = payload.data || payload.db || payload;
+    if (!data || !data.students) throw new Error('Invalid backup file');
+    const created = payload.created
+      ? new Date(payload.created).toLocaleString('en-IN') : 'unknown date';
+    if (!confirm('RESTORE BACKUP from ' + created + '?\n\nThis will overwrite current data.')) {
+      input.value = ''; return;
+    }
+    db = data;
+    db.sessions       = db.sessions       || [];
+    db.referrals      = db.referrals      || [];
+    db.assessments    = db.assessments    || [];
+    db.tasks          = db.tasks          || [];
+    db.parentMeetings = db.parentMeetings || [];
     await saveDB();
-    addAudit('RESTORE', `Restored from backup: ${file.name}`);
+    addAudit('RESTORE', 'Restored from: ' + file.name);
     showToast('BACKUP RESTORED');
     refreshDashboard();
     refreshSidebarBadges();
@@ -8481,6 +8129,36 @@ async function restoreBackup(input) {
     showToast('RESTORE FAILED — ' + e.message, true);
   }
   input.value = '';
+}
+
+// Export plain text (already exists, just ensure it works without encryption)
+function exportPlainTextBackup() {
+  const lines = [];
+  const now   = new Date().toLocaleString('en-IN', {
+    weekday:'long', day:'2-digit', month:'long',
+    year:'numeric', hour:'2-digit', minute:'2-digit'
+  });
+  lines.push('PSYCHE.OS — PLAIN TEXT BACKUP');
+  lines.push('Generated: ' + now);
+  lines.push('Counsellor: ' + (settings.counsellorName || ''));
+  lines.push('School: ' + (settings.schoolName || ''));
+  lines.push('Total students: ' + (db.students||[]).length);
+  lines.push('='.repeat(60));
+  (db.students||[]).forEach(function(s, i) {
+    lines.push('');
+    lines.push('[' + (i+1) + '] ' + s.name + ' — ' + s.id);
+    lines.push('  Class: ' + (s.class||'—') + ' ' + (s.section||'') + ' | Status: ' + (s.status||'—'));
+    if (s.concern) lines.push('  Concern: ' + s.concern);
+    if ((s.riskFlags||[]).length) lines.push('  Risk: ' + s.riskFlags.join(', '));
+    var sessions = (db.sessions||[]).filter(function(ss){ return ss.studentId === s.id; });
+    if (sessions.length) lines.push('  Sessions: ' + sessions.length);
+  });
+  lines.push('');
+  lines.push('END OF BACKUP — ' + now);
+  downloadFile(lines.join('\n'),
+    'PSYCHEOS_backup_' + new Date().toISOString().slice(0,16).replace('T','_').replace(':','-') + '.txt',
+    'text/plain');
+  showToast('PLAIN TEXT BACKUP DOWNLOADED');
 }
 
 
@@ -8492,13 +8170,16 @@ function triggerRestore() {
 }
 
 // ─── INIT ───
-const _lh = document.getElementById('lockHint');
-if (_lh) _lh.textContent = localStorage.getItem(HASH_KEY)
-  ? 'ENTER YOUR MASTER PASSWORD'
-  : 'FIRST LAUNCH: ANY PASSWORD SETS YOUR MASTER KEY';
-updateSaveIndicator();
-// Show FSA support status on lock screen
-// Browser hint handled by manifest
+// Plain mode — load settings and pre-fill name
+loadSettings();
+const _ni = document.getElementById('counsellorNameInput');
+if (_ni && settings.counsellorName) _ni.value = settings.counsellorName;
+const _si = document.getElementById('schoolNameInput');
+if (_si && settings.schoolName) _si.value = settings.schoolName;
+// Auto-open if counsellor name already saved
+if (settings.counsellorName) {
+  setTimeout(function() { startApp(); }, 100);
+}
 </script>
 </body>
 </html>
