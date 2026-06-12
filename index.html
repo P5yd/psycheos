@@ -8484,6 +8484,13 @@ async function restoreBackup(input) {
 }
 
 
+
+function triggerRestore() {
+  const el = document.getElementById('restoreInput');
+  if (el) el.click();
+  else showToast('Restore input not found', true);
+}
+
 // ─── INIT ───
 const _lh = document.getElementById('lockHint');
 if (_lh) _lh.textContent = localStorage.getItem(HASH_KEY)
