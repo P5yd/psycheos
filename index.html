@@ -9158,46 +9158,100 @@ function importGAD7Row(row) {
 }
 
 
+function sdqVal(v) {
+  const m = {'Not True':0,'Somewhat True':1,'Certainly True':2};
+  if (m[v] !== undefined) return m[v];
+  const n = parseInt(v);
+  return isNaN(n) ? 0 : n;
+}
+
 function importSDQRow(row) {
-  const rawId = (row['Student ID'] || row.StudentID || '').toString().trim().toUpperCase();
-  const normId = rawId.replace(/^PSY(\d{4})(\d{4})$/, 'PSY-$1-$2');
-  const s = findStudentById(normId) || findStudentById(rawId);
+  // Use positional access — col 0=Timestamp, col 1=StudentID, col 2=Rater, cols 3-27=25 SDQ answers
+  const cols    = row._cols || [];
+  const rawId   = (cols[1] || row['Student ID'] || row.StudentID || '')
+    .toString().trim().toUpperCase()
+    .replace(/^PSY(\d{4})(\d{4})$/, 'PSY-$1-$2');
+
+  const s = findStudentById(rawId);
   if (!s) return { success: false, reason: 'Student ID not found: ' + rawId };
 
-  const score = parseInt(row.TotalScore);
-  if (isNaN(score)) return { success: false, reason: 'Invalid score' };
+  // Check if Apps Script pre-scored (TotalScore col = index 9 in setupSheet format)
+  // OR if raw text answers are in cols 3+ (form response format)
+  // Detect by checking if col 3 is a number or text
+  const col3 = (cols[3] || '').toString().trim();
+  const isPreScored = !isNaN(parseInt(col3)) && ['Not True','Somewhat True','Certainly True'].indexOf(col3) === -1;
+
+  let eS, cS, hS, pS, prS, totalScore;
+
+  if (isPreScored) {
+    // Apps Script wrote subscores to cols 3-7, total to col 8
+    eS  = parseInt(cols[3]) || 0;
+    cS  = parseInt(cols[4]) || 0;
+    hS  = parseInt(cols[5]) || 0;
+    pS  = parseInt(cols[6]) || 0;
+    prS = parseInt(cols[7]) || 0;
+    totalScore = parseInt(cols[8]) || (eS+cS+hS+pS);
+  } else {
+    // Raw text answers in cols 3-27 (25 SDQ items)
+    // Col 2 = Rater, cols 3-27 = 25 answers
+    const raw = Array.from({length:25}, (_,i) => sdqVal(cols[3+i] || ''));
+
+    // Reversed items: E3(idx2), C2(idx6), H3(idx12), H4(idx13), P3(idx17)
+    const r = (v) => 2 - v;
+    const e  = [raw[0], raw[1], r(raw[2]),  raw[3],  raw[4]];
+    const c  = [raw[5], r(raw[6]), raw[7],  raw[8],  raw[9]];
+    const h  = [raw[10],raw[11],r(raw[12]),r(raw[13]),raw[14]];
+    const p  = [raw[15],raw[16],r(raw[17]), raw[18], raw[19]];
+    const pr = [raw[20],raw[21], raw[22],   raw[23], raw[24]];
+    const sum = a => a.reduce((s,v) => s+v, 0);
+
+    eS  = sum(e);
+    cS  = sum(c);
+    hS  = sum(h);
+    pS  = sum(p);
+    prS = sum(pr);
+    totalScore = eS + cS + hS + pS;
+  }
+
+  const cl = (v,lo,hi) => v<=lo?'Normal':v<=hi?'Borderline':'Abnormal';
+  const severity = totalScore<=13?'Normal':totalScore<=16?'Borderline':'Abnormal';
 
   if (!s.assessments) s.assessments = [];
+  const dateStr = cols[0]
+    ? new Date(cols[0]).toISOString().slice(0,10)
+    : new Date().toISOString().slice(0,10);
 
-  const dateStr = row.Timestamp ? new Date(row.Timestamp).toISOString().slice(0,10) : new Date().toISOString().slice(0,10);
   const dupe = s.assessments.find(a =>
-    a.type === 'sdq' && a.date === dateStr && a.score === score
+    a.type === 'sdq' && a.date === dateStr && a.score === totalScore
   );
   if (dupe) return { success: false, reason: 'Already imported (duplicate)' };
 
+  const raterIdx = (row._headers||[]).findIndex(h => h==='Rater'||h==='Who is filling this form?');
+  const rater    = raterIdx >= 0 ? (cols[raterIdx]||'Self-report') : (cols[2]||'Self-report');
+
   s.assessments.push({
     type:        'sdq',
-    score,
-    severity:    row.Severity || '',
+    score:       totalScore,
+    severity,
     date:        dateStr,
     savedAt:     new Date().toISOString(),
-    rater:       row.Rater || 'Self-report',
+    rater,
     source:      'Google Form',
-    emotional:   parseInt(row.Emotional)   || 0,
-    conduct:     parseInt(row.Conduct)     || 0,
-    hyperactive: parseInt(row.Hyperactive) || 0,
-    peer:        parseInt(row.Peer)        || 0,
-    prosocial:   parseInt(row.Prosocial)   || 0,
+    emotional:   eS,
+    conduct:     cS,
+    hyperactive: hS,
+    peer:        pS,
+    prosocial:   prS,
     bands: {
-      emotional:   row.EmotionalBand   || '',
-      conduct:     row.ConductBand     || '',
-      hyperactive: row.HyperactiveBand || '',
-      peer:        row.PeerBand        || '',
-      prosocial:   row.ProsocialBand   || ''
+      emotional:   cl(eS,4,5),
+      conduct:     cl(cS,2,3),
+      hyperactive: cl(hS,5,6),
+      peer:        cl(pS,2,3),
+      prosocial:   cl(prS,4,5)
     }
   });
   s.updatedAt = new Date().toISOString();
-  return { success: true, score, severity: row.Severity };
+  return { success: true, score: totalScore, severity };
 }
 
 function importStrengthsRow(row) {
