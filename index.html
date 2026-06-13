@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<!-- PSYCHEOS BUILD v2.4.0 STRENGTHS-FIX -->
+<!-- PSYCHEOS BUILD v2.5.0 STRENGTHS-QUESTIONS -->
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -6306,7 +6306,7 @@ function printReport() {
 <html>
 <head>
   <meta charset="UTF-8">
-<!-- PSYCHEOS BUILD v2.4.0 STRENGTHS-FIX -->
+<!-- PSYCHEOS BUILD v2.5.0 STRENGTHS-QUESTIONS -->
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -6375,7 +6375,7 @@ function exportReportHTML() {
 
   const full = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
-<!-- PSYCHEOS BUILD v2.4.0 STRENGTHS-FIX -->
+<!-- PSYCHEOS BUILD v2.5.0 STRENGTHS-QUESTIONS -->
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -7483,7 +7483,7 @@ function printParentMeetingReport(meetingId) {
 
   const win = window.open('', '_blank');
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-<!-- PSYCHEOS BUILD v2.4.0 STRENGTHS-FIX -->
+<!-- PSYCHEOS BUILD v2.5.0 STRENGTHS-QUESTIONS -->
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -9304,14 +9304,16 @@ function importStrengthsRow(row) {
     row['What are you naturally good at?'],
     row['What do people compliment you on most?'],
     row['What activities make you lose track of time?'],
-    row['Anything else you want to share about your strengths?']
+    row['What would your closest friend say is your best quality?'],
+    row['Anything else you want to share about your strengths?'],
+    row['What is one more thing you are proud of?']
   ].filter(x => x && x.trim());
 
   if (namedEntries.length > 0) {
     entries = namedEntries;
   } else {
     // Positional: skip col 0 (Timestamp), col 1 (ID), find text answer cols
-    const nonSkipCols = cols.slice(2).filter(v => v && v.trim() && v.length > 2 && isNaN(v));
+    const nonSkipCols = cols.slice(2).filter(v => v && v.toString().trim().length >= 1);
     entries = nonSkipCols;
   }
 
