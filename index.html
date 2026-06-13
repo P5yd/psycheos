@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<!-- PSYCHEOS BUILD v2.5.0 STRENGTHS-QUESTIONS -->
+<!-- PSYCHEOS BUILD v2.6.0 STRENGTHS-NOFALLBACK -->
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -6306,7 +6306,7 @@ function printReport() {
 <html>
 <head>
   <meta charset="UTF-8">
-<!-- PSYCHEOS BUILD v2.5.0 STRENGTHS-QUESTIONS -->
+<!-- PSYCHEOS BUILD v2.6.0 STRENGTHS-NOFALLBACK -->
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -6375,7 +6375,7 @@ function exportReportHTML() {
 
   const full = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
-<!-- PSYCHEOS BUILD v2.5.0 STRENGTHS-QUESTIONS -->
+<!-- PSYCHEOS BUILD v2.6.0 STRENGTHS-NOFALLBACK -->
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -7483,7 +7483,7 @@ function printParentMeetingReport(meetingId) {
 
   const win = window.open('', '_blank');
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-<!-- PSYCHEOS BUILD v2.5.0 STRENGTHS-QUESTIONS -->
+<!-- PSYCHEOS BUILD v2.6.0 STRENGTHS-NOFALLBACK -->
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -9312,9 +9312,13 @@ function importStrengthsRow(row) {
   if (namedEntries.length > 0) {
     entries = namedEntries;
   } else {
-    // Positional: skip col 0 (Timestamp), col 1 (ID), find text answer cols
-    const nonSkipCols = cols.slice(2).filter(v => v && v.toString().trim().length >= 1);
-    entries = nonSkipCols;
+    // Positional fallback: cols 2,3,4,5 only (max 4 strength answers)
+    // Skip domain col if it matches known domain values
+    const domainVals = new Set(['Cognitive','Social','Emotional','Physical','Spiritual','Creative','General']);
+    entries = cols.slice(2, 7).filter(v => {
+      const s = (v || '').toString().trim();
+      return s.length >= 3 && !domainVals.has(s);
+    });
   }
 
   if (entries.length === 0) return { success: false, reason: 'No strengths text found in row' };
