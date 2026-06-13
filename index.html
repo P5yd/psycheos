@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<!-- PSYCHEOS BUILD v2.3.0 ALL-TABS-FIX -->
+<!-- PSYCHEOS BUILD v2.4.0 STRENGTHS-FIX -->
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -6306,7 +6306,7 @@ function printReport() {
 <html>
 <head>
   <meta charset="UTF-8">
-<!-- PSYCHEOS BUILD v2.3.0 ALL-TABS-FIX -->
+<!-- PSYCHEOS BUILD v2.4.0 STRENGTHS-FIX -->
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -6375,7 +6375,7 @@ function exportReportHTML() {
 
   const full = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
-<!-- PSYCHEOS BUILD v2.3.0 ALL-TABS-FIX -->
+<!-- PSYCHEOS BUILD v2.4.0 STRENGTHS-FIX -->
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -7483,7 +7483,7 @@ function printParentMeetingReport(meetingId) {
 
   const win = window.open('', '_blank');
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-<!-- PSYCHEOS BUILD v2.3.0 ALL-TABS-FIX -->
+<!-- PSYCHEOS BUILD v2.4.0 STRENGTHS-FIX -->
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -9267,36 +9267,67 @@ function importSDQRow(row) {
 }
 
 function importStrengthsRow(row) {
-  const rawId = (row['Student ID'] || row.StudentID || '').toString().trim().toUpperCase();
-  const normId = rawId.replace(/^PSY(\d{4})(\d{4})$/, 'PSY-$1-$2');
-  const s = findStudentById(normId) || findStudentById(rawId);
+  // Use positional access — col 0=Timestamp, col 1=StudentID, cols 2+ = answers
+  const cols   = row._cols || [];
+  const rawId  = (cols[1] || row['Student ID'] || row.StudentID || '')
+    .toString().trim().toUpperCase()
+    .replace(/^PSY(\d{4})(\d{4})$/, 'PSY-$1-$2');
+
+  const s = findStudentById(rawId);
   if (!s) return { success: false, reason: 'Student ID not found: ' + rawId };
 
   if (!s.strengths) s.strengths = [];
 
-  const dateStr = row.Timestamp
-    ? new Date(row.Timestamp).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'})
+  const dateStr = cols[0]
+    ? new Date(cols[0]).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'})
     : new Date().toLocaleDateString('en-IN');
 
-  const entries = [row.Strength1, row.Strength2, row.Strength3, row.FreeText]
-    .filter(x => x && x.trim());
+  // Try named columns first, fall back to positional (cols 2-6)
+  const headers = row._headers || [];
+  const skip = new Set(['Timestamp','Student ID','StudentID','Domain','Imported','FreeText',
+    'What is one more thing you are proud of?','Free text']);
 
-  if (entries.length === 0) return { success: false, reason: 'No strengths text provided' };
+  // Get domain from named column or col 2
+  const domainIdx = headers.findIndex(h =>
+    h === 'Domain' || h === 'Which area?' || h.toLowerCase().includes('domain') || h.toLowerCase().includes('area')
+  );
+  const domain = domainIdx >= 0 ? (cols[domainIdx] || 'General') : (cols[2] || 'General');
 
+  // Collect all text answer columns (skip Timestamp, StudentID, Domain, Imported)
+  // From the form: cols 2+ are the strength answers
+  // Named columns like Strength1/2/3 or question text columns
+  let entries = [];
+
+  // Try named columns
+  const namedEntries = [
+    row.Strength1, row.Strength2, row.Strength3, row.FreeText,
+    row['What are you naturally good at?'],
+    row['What do people compliment you on most?'],
+    row['What activities make you lose track of time?'],
+    row['Anything else you want to share about your strengths?']
+  ].filter(x => x && x.trim());
+
+  if (namedEntries.length > 0) {
+    entries = namedEntries;
+  } else {
+    // Positional: skip col 0 (Timestamp), col 1 (ID), find text answer cols
+    const nonSkipCols = cols.slice(2).filter(v => v && v.trim() && v.length > 2 && isNaN(v));
+    entries = nonSkipCols;
+  }
+
+  if (entries.length === 0) return { success: false, reason: 'No strengths text found in row' };
+
+  let added = 0;
   entries.forEach(text => {
     const dupe = s.strengths.find(st => st.text === text.trim());
     if (!dupe) {
-      s.strengths.push({
-        text:   text.trim(),
-        domain: row.Domain || 'General',
-        date:   dateStr,
-        source: 'Google Form'
-      });
+      s.strengths.push({ text: text.trim(), domain, date: dateStr, source: 'Google Form' });
+      added++;
     }
   });
 
   s.updatedAt = new Date().toISOString();
-  return { success: true, score: undefined, severity: `${entries.length} strength(s)` };
+  return { success: true, score: undefined, severity: added + ' strength(s) added' };
 }
 
 function closeImportModal() {
