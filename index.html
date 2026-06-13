@@ -8980,70 +8980,139 @@ function updateImportLog(log, extra) {
 
 // ── ROW PROCESSORS ────────────────────────────────────
 
-function importPHQ9Row(row) {
-  const s = findStudentById(row.StudentID);
-  if (!s) return { success: false, reason: 'Student ID not found in database' };
+// PHQ-9 score from text response
+function phq9Val(v) {
+  const m = {'Not at all':0,'Several days':1,'More than half the days':2,'Nearly every day':3};
+  return m[v] !== undefined ? m[v] : (parseInt(v) || 0);
+}
 
-  const score    = parseInt(row.TotalScore);
-  const severity = row.Severity || '';
-  if (isNaN(score)) return { success: false, reason: 'Invalid score' };
+function phq9Severity(score) {
+  if (score <= 4)  return 'Minimal';
+  if (score <= 9)  return 'Mild';
+  if (score <= 14) return 'Moderate';
+  if (score <= 19) return 'Moderately Severe';
+  return 'Severe';
+}
+
+function importPHQ9Row(row) {
+  // Normalise Student ID — strip spaces, uppercase
+  const rawId = (row['Student ID'] || row.StudentID || '').toString().trim().toUpperCase();
+  // Try to match PSY-YYYY-NNNN even if dashes missing: PSY25260001 → PSY-2526-0001
+  const normId = rawId.replace(/^PSY(\d{4})(\d{4})$/, 'PSY-$1-$2');
+  const s = findStudentById(normId) || findStudentById(rawId);
+  if (!s) return { success: false, reason: 'Student ID not found: ' + rawId };
+
+  // Get answer columns — works whether scored by Apps Script or raw from form
+  // Try pre-scored TotalScore first, fall back to scoring from raw responses
+  let score, items;
+  const preScored = parseInt(row.TotalScore);
+
+  if (!isNaN(preScored) && preScored >= 0) {
+    score = preScored;
+    items = [row.Q1,row.Q2,row.Q3,row.Q4,row.Q5,row.Q6,row.Q7,row.Q8,row.Q9].map(Number);
+  } else {
+    // Score from raw response text — get all columns after Student ID and Rater (or Who)
+    const keys = Object.keys(row);
+    // Question columns start after Timestamp, Student ID, and optional rater column
+    // Find them by excluding known non-question columns
+    const skip = new Set(['Timestamp','Student ID','StudentID','Who is filling this form?',
+                          'Rater','TotalScore','Severity','Imported','FormResponseID','Q9']);
+    const qKeys = keys.filter(k => !skip.has(k) && row[k] && row[k].trim());
+    items = qKeys.slice(0, 9).map(k => phq9Val(row[k]));
+    if (items.length < 9) {
+      // Pad missing items with 0
+      while (items.length < 9) items.push(0);
+    }
+    score = items.reduce((s,v) => s+v, 0);
+  }
+
+  const severity = phq9Severity(score);
 
   if (!s.assessments) s.assessments = [];
+  const dateStr = row.Timestamp
+    ? new Date(row.Timestamp).toISOString().slice(0,10)
+    : new Date().toISOString().slice(0,10);
 
-  // Check for duplicate (same student, same date, same type)
-  const dateStr = row.Timestamp ? new Date(row.Timestamp).toISOString().slice(0,10) : new Date().toISOString().slice(0,10);
+  // Duplicate check
   const dupe = s.assessments.find(a =>
     a.type === 'phq9' && a.date === dateStr && a.score === score
   );
   if (dupe) return { success: false, reason: 'Already imported (duplicate)' };
 
   s.assessments.push({
-    type:     'phq9',
+    type:    'phq9',
     score,
     severity,
-    date:     dateStr,
-    savedAt:  new Date().toISOString(),
-    rater:    row.Rater || 'Self-report',
-    source:   'Google Form',
-    items:    [row.Q1,row.Q2,row.Q3,row.Q4,row.Q5,row.Q6,row.Q7,row.Q8,row.Q9].map(Number)
+    date:    dateStr,
+    savedAt: new Date().toISOString(),
+    rater:   row['Who is filling this form?'] || row.Rater || 'Self-report',
+    source:  'Google Form',
+    items
   });
   s.updatedAt = new Date().toISOString();
   return { success: true, score, severity };
 }
 
+function gad7Val(v) {
+  const m = {'Not at all':0,'Several days':1,'More than half the days':2,'Nearly every day':3};
+  return m[v] !== undefined ? m[v] : (parseInt(v) || 0);
+}
+
+function gad7Severity(score) {
+  if (score <= 4)  return 'Minimal';
+  if (score <= 9)  return 'Mild';
+  if (score <= 14) return 'Moderate';
+  return 'Severe';
+}
+
 function importGAD7Row(row) {
-  const s = findStudentById(row.StudentID);
-  if (!s) return { success: false, reason: 'Student ID not found in database' };
+  const rawId  = (row['Student ID'] || row.StudentID || '').toString().trim().toUpperCase();
+  const normId = rawId.replace(/^PSY(\d{4})(\d{4})$/, 'PSY-$1-$2');
+  const s = findStudentById(normId) || findStudentById(rawId);
+  if (!s) return { success: false, reason: 'Student ID not found: ' + rawId };
 
-  const score    = parseInt(row.TotalScore);
-  const severity = row.Severity || '';
-  if (isNaN(score)) return { success: false, reason: 'Invalid score' };
+  let score, items;
+  const preScored = parseInt(row.TotalScore);
 
+  if (!isNaN(preScored) && preScored >= 0) {
+    score = preScored;
+    items = [row.Q1,row.Q2,row.Q3,row.Q4,row.Q5,row.Q6,row.Q7].map(Number);
+  } else {
+    const skip = new Set(['Timestamp','Student ID','StudentID','Who is filling this form?',
+                          'Rater','TotalScore','Severity','Imported','FormResponseID']);
+    const keys = Object.keys(row);
+    const qKeys = keys.filter(k => !skip.has(k) && row[k] && row[k].trim());
+    items = qKeys.slice(0, 7).map(k => gad7Val(row[k]));
+    while (items.length < 7) items.push(0);
+    score = items.reduce((s,v) => s+v, 0);
+  }
+
+  const severity = gad7Severity(score);
   if (!s.assessments) s.assessments = [];
+  const dateStr = row.Timestamp
+    ? new Date(row.Timestamp).toISOString().slice(0,10)
+    : new Date().toISOString().slice(0,10);
 
-  const dateStr = row.Timestamp ? new Date(row.Timestamp).toISOString().slice(0,10) : new Date().toISOString().slice(0,10);
   const dupe = s.assessments.find(a =>
     a.type === 'gad7' && a.date === dateStr && a.score === score
   );
   if (dupe) return { success: false, reason: 'Already imported (duplicate)' };
 
   s.assessments.push({
-    type:     'gad7',
-    score,
-    severity,
-    date:     dateStr,
-    savedAt:  new Date().toISOString(),
-    rater:    row.Rater || 'Self-report',
-    source:   'Google Form',
-    items:    [row.Q1,row.Q2,row.Q3,row.Q4,row.Q5,row.Q6,row.Q7].map(Number)
+    type:    'gad7', score, severity,
+    date:    dateStr, savedAt: new Date().toISOString(),
+    rater:   row['Who is filling this form?'] || row.Rater || 'Self-report',
+    source:  'Google Form', items
   });
   s.updatedAt = new Date().toISOString();
   return { success: true, score, severity };
 }
 
 function importSDQRow(row) {
-  const s = findStudentById(row.StudentID);
-  if (!s) return { success: false, reason: 'Student ID not found in database' };
+  const rawId = (row['Student ID'] || row.StudentID || '').toString().trim().toUpperCase();
+  const normId = rawId.replace(/^PSY(\d{4})(\d{4})$/, 'PSY-$1-$2');
+  const s = findStudentById(normId) || findStudentById(rawId);
+  if (!s) return { success: false, reason: 'Student ID not found: ' + rawId };
 
   const score = parseInt(row.TotalScore);
   if (isNaN(score)) return { success: false, reason: 'Invalid score' };
@@ -9082,8 +9151,10 @@ function importSDQRow(row) {
 }
 
 function importStrengthsRow(row) {
-  const s = findStudentById(row.StudentID);
-  if (!s) return { success: false, reason: 'Student ID not found in database' };
+  const rawId = (row['Student ID'] || row.StudentID || '').toString().trim().toUpperCase();
+  const normId = rawId.replace(/^PSY(\d{4})(\d{4})$/, 'PSY-$1-$2');
+  const s = findStudentById(normId) || findStudentById(rawId);
+  if (!s) return { success: false, reason: 'Student ID not found: ' + rawId };
 
   if (!s.strengths) s.strengths = [];
 
