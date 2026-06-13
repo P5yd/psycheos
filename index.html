@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<!-- PSYCHEOS BUILD v2.2.0 SDQ-TAB-FIX -->
+<!-- PSYCHEOS BUILD v2.3.0 ALL-TABS-FIX -->
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -6306,7 +6306,7 @@ function printReport() {
 <html>
 <head>
   <meta charset="UTF-8">
-<!-- PSYCHEOS BUILD v2.2.0 SDQ-TAB-FIX -->
+<!-- PSYCHEOS BUILD v2.3.0 ALL-TABS-FIX -->
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -6375,7 +6375,7 @@ function exportReportHTML() {
 
   const full = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
-<!-- PSYCHEOS BUILD v2.2.0 SDQ-TAB-FIX -->
+<!-- PSYCHEOS BUILD v2.3.0 ALL-TABS-FIX -->
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -7483,7 +7483,7 @@ function printParentMeetingReport(meetingId) {
 
   const win = window.open('', '_blank');
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-<!-- PSYCHEOS BUILD v2.2.0 SDQ-TAB-FIX -->
+<!-- PSYCHEOS BUILD v2.3.0 ALL-TABS-FIX -->
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -8932,10 +8932,10 @@ async function importAssessmentsFromSheet() {
   // since they have the raw answers in full. The custom tabs (SDQ, PHQ9 etc)
   // may have corrupted data from Apps Script column mismatch.
   const googleTabNames = {
-    'PHQ9':      ['Form Responses 5'],
-    'GAD7':      ['GAD7'],
+    'PHQ9':      ['Form Responses 5', 'Form_Responses5'],
+    'GAD7':      ['GAD7', 'Form_Responses2', 'Form Responses 2'],
     'SDQ':       ['Form_Responses3', 'SDQ', 'Form Responses 3'],
-    'Strengths': ['Strengths']
+    'Strengths': ['Form_Responses4', 'Strengths', 'Form Responses 4']
   };
 
   for (const tab of tabs) {
