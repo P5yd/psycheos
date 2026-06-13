@@ -8972,10 +8972,14 @@ async function importAssessmentsFromSheet() {
         const result = tab.process(row);
         if (result.success) {
           totalImported++;
-          log.push(`✓ ${tab.name} — ${row.StudentID} — Score: ${result.score !== undefined ? result.score : '—'} (${result.severity || '—'})`);
+          const logId = row._cols ? row._cols[1] : (row['Student ID'] || row.StudentID || '?');
+          const logStu = findStudentById(logId);
+          const logName = logStu ? logStu.name : logId;
+          log.push('✓ ' + tab.name + ' — ' + logName + ' — Score: ' + (result.score !== undefined ? result.score : '—') + ' (' + (result.severity || '—') + ')');
         } else {
           totalSkipped++;
-          log.push(`✗ ${tab.name} — ${row.StudentID} — ${result.reason}`);
+          const fLogId = row._cols ? row._cols[1] : (row['Student ID'] || row.StudentID || '?');
+          log.push('✗ ' + tab.name + ' — ' + fLogId + ' — ' + result.reason);
         }
         updateImportLog(log);
       }
