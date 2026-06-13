@@ -8918,19 +8918,49 @@ async function importAssessmentsFromSheet() {
     { name: 'Strengths', type: 'strengths', process: importStrengthsRow }
   ];
 
+  // Also try Google's auto-created tab names as fallback
+  const googleTabNames = {
+    'PHQ9':      ['PHQ9', 'Form Responses 1', 'Form Responses 2', 'Form Responses 3', 'Form Responses 4', 'Form Responses 5', 'PHQ-9 Depression Screen (Responses)'],
+    'GAD7':      ['GAD7', 'Form Responses 1', 'Form Responses 2', 'Form Responses 3', 'Form Responses 4', 'Form Responses 5', 'GAD-7 Anxiety Screen (Responses)'],
+    'SDQ':       ['SDQ',  'Form Responses 1', 'Form Responses 2', 'Form Responses 3', 'Form Responses 4', 'Form Responses 5', 'SDQ Self-Report (Responses)'],
+    'Strengths': ['Strengths', 'Form Responses 1', 'Form Responses 2', 'Form Responses 3', 'Form Responses 4', 'Form Responses 5', 'Strengths Inventory (Responses)']
+  };
+
   for (const tab of tabs) {
     try {
-      updateImportLog(log, `Fetching ${tab.name} responses...`);
-      const res  = await fetch(sheetTabURL(tab.name));
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const csv  = await res.text();
-      // Validate it's actually CSV and not an error page
-      if (!csv || csv.trim().startsWith('<!')) {
-        throw new Error('Sheet not publicly accessible — check sharing settings');
-      }
-      const rows = parseCSV(csv);
-      const pending = rows.filter(r => r.Imported === 'No' || r.Imported === '');
+      // Try multiple possible tab names
+      const namesToTry = googleTabNames[tab.name] || [tab.name];
+      let csv = null;
+      let usedTab = null;
 
+      for (const tabName of namesToTry) {
+        try {
+          updateImportLog(log, `Trying tab: ${tabName}...`);
+          const res = await fetch(sheetTabURL(tabName));
+          if (!res.ok) continue;
+          const text = await res.text();
+          if (!text || text.trim().startsWith('<!')) continue;
+          // Check it has student data (StudentID or Student ID column)
+          if (text.includes('Student ID') || text.includes('StudentID') || text.includes('PSY-')) {
+            csv     = text;
+            usedTab = tabName;
+            break;
+          }
+        } catch(e) { continue; }
+      }
+
+      if (!csv) throw new Error('Could not find data in any tab. Check Sheet is public.');
+      updateImportLog(log, `${tab.name}: reading from tab "${usedTab}"`);
+
+      const rows = parseCSV(csv);
+      updateImportLog(log, `${tab.name}: ${rows.length} total row(s) found`);
+      if (rows.length > 0) {
+        updateImportLog(log, `${tab.name}: columns = ${Object.keys(rows[0]).slice(0,5).join(', ')}...`);
+      }
+      const pending = rows.filter(r => {
+        const imp = (r.Imported || r.imported || '').toString().trim();
+        return imp === 'No' || imp === '' || imp === 'no';
+      });
       updateImportLog(log, `${tab.name}: ${pending.length} new result(s) to import`);
 
       for (const row of pending) {
