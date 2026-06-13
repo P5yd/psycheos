@@ -1580,6 +1580,10 @@ canvas {
         <div class="nav-item" onclick="showView('assessments')" id="nav-assessments">
           <span class="nav-icon">▤</span> Assessments
         </div>
+        <div class="nav-item" onclick="showView('formimport')" id="nav-formimport">
+          <span class="nav-icon">⤓</span> Form Import
+          <span class="nav-badge" id="nb-formimport" style="background:var(--info);color:#fff;"></span>
+        </div>
         <div class="nav-item" onclick="showView('risk')" id="nav-risk">
           <span class="nav-icon">⚠</span> Risk Tracker
           <span class="nav-badge" id="nb-risk" style="background:rgba(255,85,85,0.15);color:var(--danger);">0</span>
@@ -1809,6 +1813,7 @@ canvas {
 
       <!-- ─── PLACEHOLDER VIEWS ─── -->
       <div class="view" id="view-referrals"></div>
+      <div class="view" id="view-formimport"></div>
       <div class="view" id="view-parentmeetings"></div>
       <div class="view" id="view-sessions">
         <div class="dash-header">
@@ -2565,6 +2570,38 @@ canvas {
 </div>
 
 
+<!-- ─── IMPORT ASSESSMENTS MODAL ─── -->
+<div class="modal-overlay" id="importModal" style="display:none;"
+     onclick="if(event.target===this)closeImportModal()">
+  <div class="modal" onclick="event.stopPropagation()" style="width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">IMPORT ASSESSMENTS FROM GOOGLE SHEET</div>
+      <button class="modal-close" onclick="closeImportModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:14px;line-height:1.7;">
+        Reads all unimported assessment responses from your Google Sheet and
+        matches them to students by their PSY ID. PHQ-9, GAD-7, SDQ and
+        Strengths are imported in one click.
+      </div>
+      <div id="importLog" style="
+        background:var(--panel2);border:1px solid var(--border);
+        border-radius:6px;padding:12px;min-height:120px;max-height:300px;
+        overflow-y:auto;font-family:var(--mono);font-size:11px;
+        line-height:1.8;
+      ">
+        <div style="color:var(--text-dim);">Click Import to begin...</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeImportModal()">CLOSE</button>
+      <button class="btn-primary" onclick="importAssessmentsFromSheet()">
+        ⤓ IMPORT NOW
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div id="toast"></div>
 
@@ -2743,6 +2780,7 @@ function showView(name) {
   if (name === 'students')   renderStudentsTable();
   if (name === 'audit')      renderAuditLog();
   if (name === 'referrals')  renderReferralsView();
+  if (name === 'formimport') renderFormImportView();
   if (name === 'parentmeetings') renderParentMeetingsView();
   if (name === 'tasks')      renderTasksView();
   if (name === 'risk')       renderRiskView();
@@ -3247,7 +3285,7 @@ document.addEventListener('keydown', e => {
     if (e.key === 'l') { e.preventDefault(); lockApp(); }
     if (e.key === 'b') { e.preventDefault(); manualBackup(); }
   }
-  if (e.key === 'Escape') { closeModal(); closeSessionModal(); closeReferralModal(); closeTaskModal(); closeParentMeetingModal(); }
+  if (e.key === 'Escape') { closeModal(); closeSessionModal(); closeReferralModal(); closeTaskModal(); closeParentMeetingModal(); closeImportModal(); }
 });
 
 
@@ -8507,6 +8545,562 @@ function resetCustomColours() {
   applyTheme(id, null);
   renderSettingsView();
   showToast('COLOURS RESET TO THEME DEFAULTS');
+}
+
+
+
+// ══════════════════════════════════════════════════════
+// ASSESSMENT IMPORT — Google Sheets Integration
+// Reads scored responses and adds to student profiles
+// ══════════════════════════════════════════════════════
+
+const GSHEET_ID  = '1HvCc93ISJ__lGiF-sbCRWZzuPuNgZeE0LXP936pMf9A';
+const GSHEET_API = 'https://sheets.googleapis.com/v4/spreadsheets';
+
+// Public read via CSV export — no API key needed
+function sheetCSVUrl(tabName) {
+  return 'https://docs.google.com/spreadsheets/d/' + GSHEET_ID
+       + '/gviz/tq?tqx=out:csv&sheet=' + encodeURIComponent(tabName);
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g,'').trim());
+  return lines.slice(1).map(line => {
+    // Handle quoted fields with commas
+    const cols = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { inQ = !inQ; }
+      else if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+      else { cur += ch; }
+    }
+    cols.push(cur.trim());
+    const row = {};
+    headers.forEach((h, i) => { row[h] = (cols[i] || '').replace(/^"|"$/g,''); });
+    return row;
+  });
+}
+
+async function importAssessments() {
+  const btn = document.getElementById('importAssessmentsBtn');
+  const status = document.getElementById('importStatus');
+  if (btn) btn.disabled = true;
+  if (status) status.textContent = 'Connecting to Google Sheets...';
+
+  let totalImported = 0;
+  let totalPending  = 0;
+  const errors = [];
+
+  try {
+    // ── PHQ-9 ──────────────────────────────────────────
+    if (status) status.textContent = 'Reading PHQ-9 responses...';
+    try {
+      const phqText = await fetch(sheetCSVUrl('PHQ9')).then(r => r.text());
+      const phqRows = parseCSV(phqText);
+      phqRows.forEach(row => {
+        if (!row.STUDENT_ID_CLEAN || row.IMPORT_STATUS === 'imported') return;
+        totalPending++;
+        const student = db.students.find(s => s.id === row.STUDENT_ID_CLEAN.trim().toUpperCase());
+        if (!student) { errors.push('PHQ-9: Student ' + row.STUDENT_ID_CLEAN + ' not found'); return; }
+        if (!student.assessments) student.assessments = [];
+        student.assessments.push({
+          type:      'phq9',
+          score:     parseInt(row.SCORE) || 0,
+          severity:  row.SEVERITY || '',
+          date:      row.Timestamp ? new Date(row.Timestamp).toISOString().slice(0,10) : new Date().toISOString().slice(0,10),
+          savedAt:   new Date().toISOString(),
+          rater:     'Self-report (Google Form)',
+          source:    'google-form'
+        });
+        totalImported++;
+      });
+    } catch(e) { errors.push('PHQ-9 read failed: ' + e.message); }
+
+    // ── GAD-7 ──────────────────────────────────────────
+    if (status) status.textContent = 'Reading GAD-7 responses...';
+    try {
+      const gadText = await fetch(sheetCSVUrl('GAD7')).then(r => r.text());
+      const gadRows = parseCSV(gadText);
+      gadRows.forEach(row => {
+        if (!row.STUDENT_ID_CLEAN || row.IMPORT_STATUS === 'imported') return;
+        totalPending++;
+        const student = db.students.find(s => s.id === row.STUDENT_ID_CLEAN.trim().toUpperCase());
+        if (!student) { errors.push('GAD-7: Student ' + row.STUDENT_ID_CLEAN + ' not found'); return; }
+        if (!student.assessments) student.assessments = [];
+        student.assessments.push({
+          type:     'gad7',
+          score:    parseInt(row.SCORE) || 0,
+          severity: row.SEVERITY || '',
+          date:     row.Timestamp ? new Date(row.Timestamp).toISOString().slice(0,10) : new Date().toISOString().slice(0,10),
+          savedAt:  new Date().toISOString(),
+          rater:    'Self-report (Google Form)',
+          source:   'google-form'
+        });
+        totalImported++;
+      });
+    } catch(e) { errors.push('GAD-7 read failed: ' + e.message); }
+
+    // ── SDQ ────────────────────────────────────────────
+    if (status) status.textContent = 'Reading SDQ responses...';
+    try {
+      const sdqText = await fetch(sheetCSVUrl('SDQ')).then(r => r.text());
+      const sdqRows = parseCSV(sdqText);
+      sdqRows.forEach(row => {
+        if (!row.STUDENT_ID_CLEAN || row.IMPORT_STATUS === 'imported') return;
+        totalPending++;
+        const student = db.students.find(s => s.id === row.STUDENT_ID_CLEAN.trim().toUpperCase());
+        if (!student) { errors.push('SDQ: Student ' + row.STUDENT_ID_CLEAN + ' not found'); return; }
+        if (!student.assessments) student.assessments = [];
+        student.assessments.push({
+          type:     'sdq',
+          score:    parseInt(row.TOTAL_DIFFICULTIES) || 0,
+          severity: row.RISK || '',
+          subscales: {
+            emotional:   parseInt(row.EMOTIONAL)   || 0,
+            conduct:     parseInt(row.CONDUCT)     || 0,
+            hyperactive: parseInt(row.HYPERACTIVE) || 0,
+            peer:        parseInt(row.PEER)        || 0,
+            prosocial:   parseInt(row.PROSOCIAL)   || 0
+          },
+          date:    row.Timestamp ? new Date(row.Timestamp).toISOString().slice(0,10) : new Date().toISOString().slice(0,10),
+          savedAt: new Date().toISOString(),
+          rater:   'Self-report (Google Form)',
+          source:  'google-form'
+        });
+        totalImported++;
+      });
+    } catch(e) { errors.push('SDQ read failed: ' + e.message); }
+
+    // ── STRENGTHS ──────────────────────────────────────
+    if (status) status.textContent = 'Reading Strengths responses...';
+    try {
+      const strText = await fetch(sheetCSVUrl('Strengths')).then(r => r.text());
+      const strRows = parseCSV(strText);
+      strRows.forEach(row => {
+        if (!row.STUDENT_ID_CLEAN || row.IMPORT_STATUS === 'imported') return;
+        totalPending++;
+        const student = db.students.find(s => s.id === row.STUDENT_ID_CLEAN.trim().toUpperCase());
+        if (!student) { errors.push('Strengths: Student ' + row.STUDENT_ID_CLEAN + ' not found'); return; }
+        if (!student.strengths) student.strengths = [];
+
+        // Build strength text from form answers
+        const parts = [];
+        const goodAt = row['What are you naturally good at?'];
+        const compliment = row['What do people compliment you on most?'];
+        const flow = row['What activities make you lose track of time?'];
+        const friend = row['What would your closest friend say is your best quality?'];
+        if (goodAt)    parts.push('Good at: ' + goodAt);
+        if (compliment) parts.push('Complimented for: ' + compliment);
+        if (flow)      parts.push('Flow activities: ' + flow);
+        if (friend)    parts.push('Best quality (peer view): ' + friend);
+
+        student.strengths.push({
+          text:   parts.join(' | ') || 'Self-reported strength',
+          domain: row['Which domain best describes your strength?'] || 'Cognitive',
+          date:   row.Timestamp ? new Date(row.Timestamp).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN'),
+          source: 'google-form'
+        });
+        totalImported++;
+      });
+    } catch(e) { errors.push('Strengths read failed: ' + e.message); }
+
+    // ── Save and report ────────────────────────────────
+    if (totalImported > 0) {
+      await saveDB();
+      addAudit('ASSESSMENTS_IMPORTED', totalImported + ' assessments imported from Google Forms');
+    }
+
+    let msg = '';
+    if (totalImported > 0) {
+      msg = '✓ ' + totalImported + ' assessment' + (totalImported > 1 ? 's' : '') + ' imported successfully';
+      if (errors.length) msg += ' (' + errors.length + ' unmatched — check console)';
+      showToast(msg);
+      refreshDashboard();
+    } else if (totalPending === 0) {
+      msg = 'No pending responses found in the sheet';
+    } else {
+      msg = 'No responses matched — check Student IDs';
+      if (errors.length) msg += ': ' + errors[0];
+    }
+
+    if (status) {
+      status.textContent = msg;
+      status.style.color = totalImported > 0 ? 'var(--primary)' : 'var(--warn)';
+    }
+
+    if (errors.length) console.warn('Import errors:', errors);
+
+  } catch(e) {
+    if (status) { status.textContent = 'Import failed: ' + e.message; status.style.color = 'var(--danger)'; }
+    showToast('Import failed: ' + e.message, true);
+    console.error('Import error:', e);
+  }
+
+  if (btn) btn.disabled = false;
+}
+
+
+
+function renderFormImportView() {
+  const view = document.getElementById('view-formimport');
+  if (!view) return;
+
+  const forms = [
+    { name:'PHQ-9 Depression Screen', key:'phq9-form-url',      col:'var(--primary)' },
+    { name:'GAD-7 Anxiety Screen',    key:'gad7-form-url',      col:'var(--info)'    },
+    { name:'SDQ Self-Report',         key:'sdq-form-url',       col:'var(--warn)'    },
+    { name:'Strengths Inventory',     key:'strengths-form-url', col:'#5A9E6F'        }
+  ];
+
+  function formCard(f) {
+    const saved = localStorage.getItem('psycheos_form_' + f.key) || '';
+    const copyBtn = saved
+      ? '<button class="btn-secondary" style="font-size:10px;padding:4px 8px;" ' +
+        'onclick="navigator.clipboard.writeText(\'' + saved.replace(/'/g,"\\'") + '\');showToast(\'Link copied!\')">Copy</button>'
+      : '';
+    const editBtn = '<button class="btn-secondary" style="font-size:10px;padding:4px 8px;" ' +
+      'onclick="saveFormLink(\'' + f.key + '\', prompt(\'Paste your Google Form link:\'))">'+
+      (saved ? 'Edit' : '+ Add Link') + '</button>';
+    return '<div style="border:1px solid var(--border);padding:10px 12px;border-radius:6px;margin-bottom:8px;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">' +
+        '<div>' +
+          '<div style="font-size:12px;font-weight:600;color:' + f.col + ';">' + f.name + '</div>' +
+          '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;word-break:break-all;">' +
+            (saved || '<em>No link saved yet</em>') +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:6px;flex-shrink:0;">' + copyBtn + editBtn + '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  const steps = [
+    ['1','You share a form link with a student via WhatsApp'],
+    ['2','Student fills the form and enters their Student ID (e.g. PSY-2526-0001)'],
+    ['3','Google Apps Script auto-scores and writes to the Sheet'],
+    ['4','You click Import — results appear in the student profile instantly']
+  ];
+
+  function stepCard(n, t) {
+    return '<div style="text-align:center;padding:12px 8px;">' +
+      '<div style="font-size:24px;font-weight:800;color:var(--primary);margin-bottom:6px;">' + n + '</div>' +
+      '<div style="font-size:11px;color:var(--text-dim);line-height:1.6;">' + t + '</div>' +
+    '</div>';
+  }
+
+  view.innerHTML =
+    '<div class="dash-header">' +
+      '<div class="view-title">ASSESSMENT IMPORT</div>' +
+      '<div class="view-sub">GOOGLE FORMS → PSYCHE.OS</div>' +
+    '</div>' +
+    '<div class="dash-body">' +
+      '<div style="max-width:720px;">' +
+
+        '<div class="dash-panel" style="margin-bottom:14px;border-left:3px solid var(--primary);">' +
+          '<div class="dash-panel-title">⤓ IMPORT ALL PENDING RESPONSES</div>' +
+          '<p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;line-height:1.6;">' +
+            'Pulls new PHQ-9, GAD-7, SDQ and Strengths results from your Google Sheet. ' +
+            'Students must enter their exact Student ID on the form. ' +
+            'Already-imported results are skipped automatically.' +
+          '</p>' +
+          '<button class="btn-primary" onclick="document.getElementById(\'importModal\').style.display=\'flex\'" ' +
+            'style="width:100%;padding:11px;font-size:13px;">' +
+            '⤓ Import Assessment Results' +
+          '</button>' +
+        '</div>' +
+
+        '<div class="dash-panel" style="margin-bottom:14px;">' +
+          '<div class="dash-panel-title">📋 YOUR FORM LINKS</div>' +
+          '<div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">' +
+            'Share these links with students via WhatsApp or email. ' +
+            'Each student must enter their exact Student ID.' +
+          '</div>' +
+          forms.map(formCard).join('') +
+        '</div>' +
+
+        '<div class="dash-panel" style="margin-bottom:14px;">' +
+          '<div class="dash-panel-title">HOW IT WORKS</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:6px;">' +
+            steps.map(([n,t]) => stepCard(n,t)).join('') +
+          '</div>' +
+        '</div>' +
+
+      '</div>' +
+    '</div>';
+}
+
+function saveFormLink(key, url) {
+  if (!url || !url.trim()) return;
+  localStorage.setItem('psycheos_form_' + key, url.trim());
+  showToast('FORM LINK SAVED');
+  renderFormImportView();
+}
+
+function saveFormLink(key, url) {
+  if (!url || !url.trim()) return;
+  localStorage.setItem('psycheos_form_' + key, url.trim());
+  renderFormImportView();
+  showToast('Form link saved');
+}
+
+
+// ══════════════════════════════════════════════════════
+// PSYCHE.OS — Google Sheets Assessment Importer
+// Reads scored results and creates assessment records
+// ══════════════════════════════════════════════════════
+
+const SHEET_BASE_URL = 'https://docs.google.com/spreadsheets/d/1HvCc93ISJ__lGiF-sbCRWZzuPuNgZeE0LXP936pMf9A';
+
+// Convert Google Sheets to CSV export URL for a named tab
+function sheetTabURL(tabName) {
+  return SHEET_BASE_URL + '/gviz/tq?tqx=out:csv&sheet=' + encodeURIComponent(tabName);
+}
+
+// Parse CSV string into array of objects
+function parseCSV(csv) {
+  const lines = csv.trim().split('\n');
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g,'').trim());
+  return lines.slice(1).map(line => {
+    // Handle quoted fields with commas inside
+    const cols = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { inQ = !inQ; }
+      else if (ch === ',' && !inQ) { cols.push(cur); cur = ''; }
+      else { cur += ch; }
+    }
+    cols.push(cur);
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = (cols[i] || '').replace(/^"|"$/g,'').trim(); });
+    return obj;
+  });
+}
+
+// Find student by PSY ID
+function findStudentById(id) {
+  const normalised = id.trim().toUpperCase();
+  return (db.students || []).find(s =>
+    s.id && s.id.toUpperCase() === normalised
+  );
+}
+
+// Main import function
+async function importAssessmentsFromSheet() {
+  const modal = document.getElementById('importModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    document.getElementById('importLog').innerHTML =
+      '<div style="color:var(--text-dim);">Connecting to Google Sheet...</div>';
+  }
+
+  let totalImported = 0;
+  let totalSkipped  = 0;
+  let log = [];
+
+  const tabs = [
+    { name: 'PHQ9',      type: 'phq9',      process: importPHQ9Row },
+    { name: 'GAD7',      type: 'gad7',      process: importGAD7Row },
+    { name: 'SDQ',       type: 'sdq',       process: importSDQRow  },
+    { name: 'Strengths', type: 'strengths', process: importStrengthsRow }
+  ];
+
+  for (const tab of tabs) {
+    try {
+      updateImportLog(log, `Fetching ${tab.name} responses...`);
+      const res  = await fetch(sheetTabURL(tab.name));
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const csv  = await res.text();
+      const rows = parseCSV(csv);
+      const pending = rows.filter(r => r.Imported === 'No' || r.Imported === '');
+
+      updateImportLog(log, `${tab.name}: ${pending.length} new result(s) to import`);
+
+      for (const row of pending) {
+        const result = tab.process(row);
+        if (result.success) {
+          totalImported++;
+          log.push(`✓ ${tab.name} — ${row.StudentID} — Score: ${result.score !== undefined ? result.score : '—'} (${result.severity || '—'})`);
+        } else {
+          totalSkipped++;
+          log.push(`✗ ${tab.name} — ${row.StudentID} — ${result.reason}`);
+        }
+        updateImportLog(log);
+      }
+    } catch(e) {
+      log.push(`⚠ ${tab.name} — Could not fetch: ${e.message}`);
+      updateImportLog(log);
+    }
+  }
+
+  if (totalImported > 0) {
+    await saveDB();
+    addAudit('ASSESSMENTS_IMPORTED', `Imported ${totalImported} assessments from Google Sheet`);
+  }
+
+  log.push('');
+  log.push(`─── DONE: ${totalImported} imported, ${totalSkipped} skipped ───`);
+  if (totalImported > 0) {
+    log.push('Data saved. Refresh student profiles to see new assessments.');
+  }
+  updateImportLog(log);
+  refreshDashboard();
+}
+
+function updateImportLog(log, extra) {
+  const el = document.getElementById('importLog');
+  if (!el) return;
+  const lines = extra ? [...log, extra] : log;
+  el.innerHTML = lines.map(l => {
+    const col = l.startsWith('✓') ? 'var(--primary)' :
+                l.startsWith('✗') ? 'var(--danger)'  :
+                l.startsWith('⚠') ? 'var(--warn)'    :
+                l.startsWith('─') ? 'var(--text)'     : 'var(--text-dim)';
+    return `<div style="color:${col};margin-bottom:2px;">${l}</div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── ROW PROCESSORS ────────────────────────────────────
+
+function importPHQ9Row(row) {
+  const s = findStudentById(row.StudentID);
+  if (!s) return { success: false, reason: 'Student ID not found in database' };
+
+  const score    = parseInt(row.TotalScore);
+  const severity = row.Severity || '';
+  if (isNaN(score)) return { success: false, reason: 'Invalid score' };
+
+  if (!s.assessments) s.assessments = [];
+
+  // Check for duplicate (same student, same date, same type)
+  const dateStr = row.Timestamp ? new Date(row.Timestamp).toISOString().slice(0,10) : new Date().toISOString().slice(0,10);
+  const dupe = s.assessments.find(a =>
+    a.type === 'phq9' && a.date === dateStr && a.score === score
+  );
+  if (dupe) return { success: false, reason: 'Already imported (duplicate)' };
+
+  s.assessments.push({
+    type:     'phq9',
+    score,
+    severity,
+    date:     dateStr,
+    savedAt:  new Date().toISOString(),
+    rater:    row.Rater || 'Self-report',
+    source:   'Google Form',
+    items:    [row.Q1,row.Q2,row.Q3,row.Q4,row.Q5,row.Q6,row.Q7,row.Q8,row.Q9].map(Number)
+  });
+  s.updatedAt = new Date().toISOString();
+  return { success: true, score, severity };
+}
+
+function importGAD7Row(row) {
+  const s = findStudentById(row.StudentID);
+  if (!s) return { success: false, reason: 'Student ID not found in database' };
+
+  const score    = parseInt(row.TotalScore);
+  const severity = row.Severity || '';
+  if (isNaN(score)) return { success: false, reason: 'Invalid score' };
+
+  if (!s.assessments) s.assessments = [];
+
+  const dateStr = row.Timestamp ? new Date(row.Timestamp).toISOString().slice(0,10) : new Date().toISOString().slice(0,10);
+  const dupe = s.assessments.find(a =>
+    a.type === 'gad7' && a.date === dateStr && a.score === score
+  );
+  if (dupe) return { success: false, reason: 'Already imported (duplicate)' };
+
+  s.assessments.push({
+    type:     'gad7',
+    score,
+    severity,
+    date:     dateStr,
+    savedAt:  new Date().toISOString(),
+    rater:    row.Rater || 'Self-report',
+    source:   'Google Form',
+    items:    [row.Q1,row.Q2,row.Q3,row.Q4,row.Q5,row.Q6,row.Q7].map(Number)
+  });
+  s.updatedAt = new Date().toISOString();
+  return { success: true, score, severity };
+}
+
+function importSDQRow(row) {
+  const s = findStudentById(row.StudentID);
+  if (!s) return { success: false, reason: 'Student ID not found in database' };
+
+  const score = parseInt(row.TotalScore);
+  if (isNaN(score)) return { success: false, reason: 'Invalid score' };
+
+  if (!s.assessments) s.assessments = [];
+
+  const dateStr = row.Timestamp ? new Date(row.Timestamp).toISOString().slice(0,10) : new Date().toISOString().slice(0,10);
+  const dupe = s.assessments.find(a =>
+    a.type === 'sdq' && a.date === dateStr && a.score === score
+  );
+  if (dupe) return { success: false, reason: 'Already imported (duplicate)' };
+
+  s.assessments.push({
+    type:        'sdq',
+    score,
+    severity:    row.Severity || '',
+    date:        dateStr,
+    savedAt:     new Date().toISOString(),
+    rater:       row.Rater || 'Self-report',
+    source:      'Google Form',
+    emotional:   parseInt(row.Emotional)   || 0,
+    conduct:     parseInt(row.Conduct)     || 0,
+    hyperactive: parseInt(row.Hyperactive) || 0,
+    peer:        parseInt(row.Peer)        || 0,
+    prosocial:   parseInt(row.Prosocial)   || 0,
+    bands: {
+      emotional:   row.EmotionalBand   || '',
+      conduct:     row.ConductBand     || '',
+      hyperactive: row.HyperactiveBand || '',
+      peer:        row.PeerBand        || '',
+      prosocial:   row.ProsocialBand   || ''
+    }
+  });
+  s.updatedAt = new Date().toISOString();
+  return { success: true, score, severity: row.Severity };
+}
+
+function importStrengthsRow(row) {
+  const s = findStudentById(row.StudentID);
+  if (!s) return { success: false, reason: 'Student ID not found in database' };
+
+  if (!s.strengths) s.strengths = [];
+
+  const dateStr = row.Timestamp
+    ? new Date(row.Timestamp).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'})
+    : new Date().toLocaleDateString('en-IN');
+
+  const entries = [row.Strength1, row.Strength2, row.Strength3, row.FreeText]
+    .filter(x => x && x.trim());
+
+  if (entries.length === 0) return { success: false, reason: 'No strengths text provided' };
+
+  entries.forEach(text => {
+    const dupe = s.strengths.find(st => st.text === text.trim());
+    if (!dupe) {
+      s.strengths.push({
+        text:   text.trim(),
+        domain: row.Domain || 'General',
+        date:   dateStr,
+        source: 'Google Form'
+      });
+    }
+  });
+
+  s.updatedAt = new Date().toISOString();
+  return { success: true, score: undefined, severity: `${entries.length} strength(s)` };
+}
+
+function closeImportModal() {
+  const modal = document.getElementById('importModal');
+  if (modal) modal.style.display = 'none';
 }
 
 
