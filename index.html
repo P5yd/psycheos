@@ -8924,11 +8924,14 @@ async function importAssessmentsFromSheet() {
   ];
 
   // Also try Google's auto-created tab names as fallback
+  // Tab name priority: try the Google auto-created Form Responses tabs first
+  // since they have the raw answers in full. The custom tabs (SDQ, PHQ9 etc)
+  // may have corrupted data from Apps Script column mismatch.
   const googleTabNames = {
-    'PHQ9':      ['PHQ9', 'Form Responses 1', 'Form Responses 2', 'Form Responses 3', 'Form Responses 4', 'Form Responses 5', 'PHQ-9 Depression Screen (Responses)'],
-    'GAD7':      ['GAD7', 'Form Responses 1', 'Form Responses 2', 'Form Responses 3', 'Form Responses 4', 'Form Responses 5', 'GAD-7 Anxiety Screen (Responses)'],
-    'SDQ':       ['SDQ',  'Form Responses 1', 'Form Responses 2', 'Form Responses 3', 'Form Responses 4', 'Form Responses 5', 'SDQ Self-Report (Responses)'],
-    'Strengths': ['Strengths', 'Form Responses 1', 'Form Responses 2', 'Form Responses 3', 'Form Responses 4', 'Form Responses 5', 'Strengths Inventory (Responses)']
+    'PHQ9':      ['Form Responses 5'],
+    'GAD7':      ['GAD7'],
+    'SDQ':       ['SDQ'],
+    'Strengths': ['Strengths']
   };
 
   for (const tab of tabs) {
@@ -9178,13 +9181,19 @@ function importSDQRow(row) {
   // Check if Apps Script pre-scored (TotalScore col = index 9 in setupSheet format)
   // OR if raw text answers are in cols 3+ (form response format)
   // Detect by checking if col 3 is a number or text
+  // Detect answer start column:
+  // Form Responses tab: col 0=Timestamp, col 1=Student ID, cols 2-26 = 25 answers (no Rater)
+  // SDQ tab (Apps Script): col 0=Timestamp, col 1=StudentID, col 2=Rater, cols 3+ = subscores
+  const col2 = (cols[2] || '').toString().trim();
   const col3 = (cols[3] || '').toString().trim();
-  const isPreScored = !isNaN(parseInt(col3)) && ['Not True','Somewhat True','Certainly True'].indexOf(col3) === -1;
+  const sdqAnswers = ['Not True','Somewhat True','Certainly True'];
+  const answerStartCol = sdqAnswers.indexOf(col2) !== -1 ? 2 : 3;
+  const isPreScored = !isNaN(parseInt(col3)) && sdqAnswers.indexOf(col3) === -1
+                   && !isNaN(parseInt(cols[8]));
 
   let eS, cS, hS, pS, prS, totalScore;
 
   if (isPreScored) {
-    // Apps Script wrote subscores to cols 3-7, total to col 8
     eS  = parseInt(cols[3]) || 0;
     cS  = parseInt(cols[4]) || 0;
     hS  = parseInt(cols[5]) || 0;
@@ -9192,9 +9201,8 @@ function importSDQRow(row) {
     prS = parseInt(cols[7]) || 0;
     totalScore = parseInt(cols[8]) || (eS+cS+hS+pS);
   } else {
-    // Raw text answers in cols 3-27 (25 SDQ items)
-    // Col 2 = Rater, cols 3-27 = 25 answers
-    const raw = Array.from({length:25}, (_,i) => sdqVal(cols[3+i] || ''));
+    // Raw text answers starting at detected column
+    const raw = Array.from({length:25}, (_,i) => sdqVal(cols[answerStartCol+i] || ''));
 
     // Reversed items: E3(idx2), C2(idx6), H3(idx12), H4(idx13), P3(idx17)
     const r = (v) => 2 - v;
@@ -9227,7 +9235,7 @@ function importSDQRow(row) {
   if (dupe) return { success: false, reason: 'Already imported (duplicate)' };
 
   const raterIdx = (row._headers||[]).findIndex(h => h==='Rater'||h==='Who is filling this form?');
-  const rater    = raterIdx >= 0 ? (cols[raterIdx]||'Self-report') : (cols[2]||'Self-report');
+  const rater    = raterIdx >= 0 ? (cols[raterIdx]||'Self-report') : 'Self-report';
 
   s.assessments.push({
     type:        'sdq',
